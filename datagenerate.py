@@ -14,17 +14,21 @@ def makeFile(res, cursor):
     output_file.writerow(col_names)
     for x in res:
         output_file.writerow(x)
-        
+
+def connectData(file):
+    db_conn = mariaDB.connect(host='localhost', user='root', passwd="password")
+    fd = open(file, 'r')
+    Query = fd.read()
+    fd.close()
+    print(type(Query))
+    cur = db_conn.cursor()
+    makeFile(getData(Query, cur), cur)   
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("fileName", help="Name of the SQL file you would like to run")
     args = parser.parse_args()
-    db_conn = mariaDB.connect(host='localhost', user='root', passwd="password")
-    fd = open(args.fileName, 'r')
-    Query = fd.read()
-    fd.close()
-    cur = db_conn.cursor()
-    makeFile(getData(Query, cur), cur)   
+    connectData(args.fileName)
 
 if __name__=="__main__":
     main()
