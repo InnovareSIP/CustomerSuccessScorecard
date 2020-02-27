@@ -1,5 +1,6 @@
 import mysql.connector as mariaDB
 from google.cloud import bigquery
+from google.cloud.exceptions import NotFound
 import argparse
 import csv
 import os
@@ -11,14 +12,13 @@ def getData(query, cursor):
     res = cursor.fetchall()
     return res
 
-def makeFile(res, cursor,table):
+def makeFile(res,cursor,table):
     col_names = [i[0] for i in cursor.description]
     tablename = table +  ".csv"
     output_file = csv.writer(open(tablename, 'w', newline=''))
     output_file.writerow(col_names)
-    for x in res:
-        output_file.writerow(x)
-    sendtobq(table)
+    for row in res:
+        output_file.writerow(row)
 
 def connectData(dbName):
     db_conn = mariaDB.connect(host='localhost', user='root', passwd="password")
@@ -27,9 +27,14 @@ def connectData(dbName):
 
 def copyTables(cur,dbName):
     tablenames = getTableNames(cur,dbName)
+    count = 1
     for table in tablenames:
+        print(count)
+        count +=1
         query = "SELECT * FROM " + dbName + "." + table
         makeFile(getData(query, cur), cur, table)
+        sendtobq(table,dbName)
+
 
 def getTableNames(cursor, dbName):
     query = "SHOW TABLES from " + dbName
@@ -37,14 +42,19 @@ def getTableNames(cursor, dbName):
     tablenames = [i[0] for i in cursor.fetchall()]
     return tablenames
 
-def sendtobq(table):
-    print(table)
+def sendtobq(table, dbName):
     client = bigquery.Client()
     filename = './' + table + ".csv"
-    dataset_id = 'Test_set'
+    dataset_id = "{}.{}".format(client.project,dbName)
     table_id = table
-    dataset_ref = client.dataset(dataset_id)
-    table_ref = dataset_ref.table(table_id)
+    dataset = bigquery.Dataset(dataset_id)
+    try:
+        client.get_dataset(dataset_id)  # Make an API request.
+        print("Dataset {} already exists".format(dataset_id))
+    except NotFound:
+        print("Dataset {} is not found".format(dataset_id))
+        dataset = client.create_dataset(dataset)
+    table_ref = dataset.table(table_id)
     job_config = bigquery.LoadJobConfig()
     job_config.source_format = bigquery.SourceFormat.CSV
     # job_config.skip_leading_rows = 1
