@@ -4,8 +4,11 @@ from google.cloud.exceptions import NotFound
 import argparse
 import csv
 import os
+import configparser
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="C:/Users/crodr/Downloads/bqKeys.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./bqKeys.json"
+def getCreds(env):
+    config =
 
 def getData(query, cursor):
     cursor.execute(query)
@@ -27,10 +30,7 @@ def connectData(dbName):
 
 def copyTables(cur,dbName):
     tablenames = getTableNames(cur,dbName)
-    count = 1
     for table in tablenames:
-        print(count)
-        count +=1
         query = "SELECT * FROM " + dbName + "." + table
         makeFile(getData(query, cur), cur, table)
         sendtobq(table,dbName)
@@ -49,10 +49,10 @@ def sendtobq(table, dbName):
     table_id = table
     dataset = bigquery.Dataset(dataset_id)
     try:
-        client.get_dataset(dataset_id)  # Make an API request.
-        print("Dataset {} already exists".format(dataset_id))
+        client.get_dataset(dataset_id)
+        print("Dataset {} exists: inserting data".format(dataset_id))
     except NotFound:
-        print("Dataset {} is not found".format(dataset_id))
+        print("Dataset {} is not found:creating dataset".format(dataset_id))
         dataset = client.create_dataset(dataset)
     table_ref = dataset.table(table_id)
     job_config = bigquery.LoadJobConfig()
@@ -67,6 +67,7 @@ def sendtobq(table, dbName):
 def main():
    
     parser = argparse.ArgumentParser()
+    parser.add_argument("envName", help="Name of the enviroment you would like to copy from"
     parser.add_argument("dbName", help="Name of the database you would like to copy")
     args = parser.parse_args()
     connectData(args.dbName)
