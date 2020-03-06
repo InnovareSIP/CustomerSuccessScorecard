@@ -5,12 +5,10 @@ __pycache__/
 
 # C extensions
 *.so
-# CSV Files
-*.CSV
 
 # Config files
 *.cfg
-*.json
+*.ini
 
 # Distribution / packaging
 .Python

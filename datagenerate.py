@@ -8,7 +8,10 @@ import configparser
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./bqKeys.json"
 def getCreds(env):
-    config =
+    config = configparser.ConfigParser()
+    config.read("./config/db.ini")
+    creds = (dict(config.items(env)))
+    return creds
 
 def getData(query, cursor):
     cursor.execute(query)
@@ -23,8 +26,9 @@ def makeFile(res,cursor,table):
     for row in res:
         output_file.writerow(row)
 
-def connectData(dbName):
-    db_conn = mariaDB.connect(host='localhost', user='root', passwd="password")
+def connectData(dbName, creds):
+    print(creds)
+    db_conn = mariaDB.connect(host=creds['host'], user=creds['user'], passwd=creds['passwrd'])
     cur = db_conn.cursor()
     copyTables(cur,dbName)
 
@@ -67,10 +71,11 @@ def sendtobq(table, dbName):
 def main():
    
     parser = argparse.ArgumentParser()
-    parser.add_argument("envName", help="Name of the enviroment you would like to copy from"
+    parser.add_argument("envName", help="Name of the enviroment you would like to copy from")
     parser.add_argument("dbName", help="Name of the database you would like to copy")
     args = parser.parse_args()
-    connectData(args.dbName)
+    credentials = getCreds(args.envName)
+    connectData(args.dbName, credentials)
 
 if __name__=="__main__":
     main()
