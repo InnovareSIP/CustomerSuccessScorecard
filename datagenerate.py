@@ -6,7 +6,7 @@ import csv
 import os
 import configparser
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./bqKeys.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./config/bqKeys.json"
 def getCreds(env):
     config = configparser.ConfigParser()
     config.read("./config/db.ini")
@@ -20,8 +20,8 @@ def getData(query, cursor):
 
 def makeFile(res,cursor,table):
     col_names = [i[0] for i in cursor.description]
-    tablename = table +  ".csv"
-    output_file = csv.writer(open(tablename, 'w', newline=''))
+    tablename = f'{table}.csv'
+    output_file = csv.writer(open(f'./output/{tablename}', 'w', newline=''))
     output_file.writerow(col_names)
     for row in res:
         output_file.writerow(row)
@@ -48,7 +48,7 @@ def getTableNames(cursor, dbName):
 
 def sendtobq(table, dbName):
     client = bigquery.Client()
-    filename = './' + table + ".csv"
+    filename = './output/' + table + ".csv"
     dataset_id = "{}.{}".format(client.project,dbName)
     table_id = table
     dataset = bigquery.Dataset(dataset_id)
