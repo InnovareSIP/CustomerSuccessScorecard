@@ -9,6 +9,10 @@ __pycache__/
 # Config files
 *.cfg
 *.ini
+*.json
+
+#CSV Files
+*.CSV
 
 # Distribution / packaging
 .Python
