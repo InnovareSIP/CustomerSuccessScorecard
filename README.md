@@ -25,10 +25,10 @@ host=\[staging host\]<br/>
 user=\[staging user\]<br/>
 passwrd=\[staging password\]<br/>
 
-\[production\]
-host=\[production host\]
-user=\[production username\]
-passwrd=\[production password\]
+\[production\]<br/>
+host=\[production host\]<br/>
+user=\[production username\]<br/>
+passwrd=\[production password\]<br/>
 
 # Running the script
 The script requires two arguments in order to run: \[name of the enviroment you want to connect to\] \[name of database to copy\]<br/>
