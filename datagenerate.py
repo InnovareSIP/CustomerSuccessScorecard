@@ -5,13 +5,17 @@ import argparse
 import csv
 import os
 import configparser
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./config/bqkeys.json"
+import sys
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./config/bqcofig.json"
 
 def getCreds(env):
-    config = configparser.ConfigParser()
-    config.read("./config/db.ini")
-    creds = (dict(config.items(env)))
-    return creds
+    try:
+        config = configparser.ConfigParser()
+        config.read("./config/dbconfig.ini")
+        creds = (dict(config.items(env)))
+        return creds
+    except:
+        print('Could not find dbconfig.ini')
 
 def getData(query, cursor):
     cursor.execute(query)
@@ -27,10 +31,14 @@ def makeFile(res,cursor,table):
         output_file.writerow(row)
 
 def connectData(dbName, creds):
-    print(creds)
-    db_conn = mariaDB.connect(host=creds['host'], user=creds['user'], passwd=creds['passwrd'])
-    cur = db_conn.cursor()
-    copyTables(cur,dbName)
+    try: 
+        db_conn = mariaDB.connect(host=creds['host'], user=creds['user'], passwd=creds['passwrd'])
+        print(f'Connetected to {dbName} sucessfully')
+    except:
+        print(f'Could not connect to {dbName}')
+    else:    
+        cur = db_conn.cursor()
+        copyTables(cur,dbName)
 
 def copyTables(cur,dbName):
     tablenames = getTableNames(cur,dbName)
@@ -46,26 +54,32 @@ def getTableNames(cursor, dbName):
     return tablenames
 
 def sendtobq(table, dbName):
-    client = bigquery.Client()
-    filename = f'./output/{table}.csv'
-    dataset_id = f'{client.project}.{dbName}'
-    table_id = table
-    dataset = bigquery.Dataset(dataset_id)
     try:
-        client.get_dataset(dataset_id)
-        print(f'Dataset {dataset_id} exists: inserting data')
-    except NotFound:
-        print(f'Dataset {dataset_id} is not found:creating dataset')
-        dataset = client.create_dataset(dataset)
-    table_ref = dataset.table(table_id)
-    job_config = bigquery.LoadJobConfig()
-    job_config.source_format = bigquery.SourceFormat.CSV
-    # job_config.skip_leading_rows = 1
-    job_config.autodetect = True
-    with open(filename, "rb") as source_file:
-        job = client.load_table_from_file(source_file, table_ref, job_config=job_config)
-    job.result()  # Waits for table load to complete.
-    print(f'Loaded {job.output_rows} rows into {dataset_id}:{table_id}.')
+        client = bigquery.Client()
+    except:
+        print("Could not connect to Big Query")
+        sys.exit()
+    else:
+        print("Connected to Big Query successfully")
+        filename = f'./output/{table}.csv'
+        dataset_id = f'{client.project}.{dbName}'
+        table_id = table
+        dataset = bigquery.Dataset(dataset_id)
+        try:
+            client.get_dataset(dataset_id)
+            print(f'Dataset {dataset_id} exists: inserting data')
+        except NotFound:
+            print(f'Dataset {dataset_id} is not found:creating dataset')
+            dataset = client.create_dataset(dataset)
+        else:
+            table_ref = dataset.table(table_id)
+            job_config = bigquery.LoadJobConfig()
+            job_config.source_format = bigquery.SourceFormat.CSV
+            job_config.autodetect = True
+            with open(filename, "rb") as source_file:
+                job = client.load_table_from_file(source_file, table_ref, job_config=job_config)
+            job.result()  
+            print(f'Loaded {job.output_rows} rows into {dataset_id}:{table_id}.')
 
 def main():
     parser = argparse.ArgumentParser()
@@ -73,7 +87,8 @@ def main():
     parser.add_argument("dbName", help="Name of the database you would like to copy")
     args = parser.parse_args()
     credentials = getCreds(args.envName)
-    connectData(args.dbName, credentials)
+    if(credentials):
+        connectData(args.dbName, credentials)
 
 if __name__=="__main__":
     main()
