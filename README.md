@@ -33,4 +33,4 @@ The script takes you arguments: \[name of the enviroment you want to connect to\
 
 \> py datagenerate.py local mock_data_db
 
-This would cory all tables from your local mock_data_db and upload them to big query inside of the dataset mock_data_db
+This would copy all tables from your local mock_data_db and upload them to big query inside of the dataset mock_data_db
