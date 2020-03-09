@@ -5,11 +5,11 @@ import argparse
 import csv
 import os
 import configparser
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./config/*.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./config/bqkeys.json"
 
 def getCreds(env):
     config = configparser.ConfigParser()
-    config.read("./config/*.ini")
+    config.read("./config/db.ini")
     creds = (dict(config.items(env)))
     return creds
 
@@ -38,7 +38,6 @@ def copyTables(cur,dbName):
         query = f'SELECT * FROM {dbName}.{table}'
         makeFile(getData(query, cur), cur, table)
         sendtobq(table,dbName)
-
 
 def getTableNames(cursor, dbName):
     query = f'SHOW TABLES from {dbName}'
