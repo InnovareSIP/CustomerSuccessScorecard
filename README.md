@@ -13,7 +13,7 @@ Obtain your Big Query service account keys by following this guide and save it t
 https://cloud.google.com/bigquery/docs/quickstarts/quickstart-client-libraries
 Rename the file to bqconfig.json and move it to the /config folder of this scripts directory
 
-Create a dbconfig.ini in the /config directory. Edit the file to include the correct host, user, and password of the database you would like to connect to.
+Create a dbconfig.ini in the /config directory. Edit the file to include the correct host, user, and password of the databases you would like to connect to.
 
 You only need to configure the databases you would like to connect to ie if you would only like to connect only to a local database this file only needs to the \[local\] section to be configured. 
 
@@ -25,7 +25,7 @@ user=local_user<br/>
 passwrd=local_password<br/>
 
 \[staging\]<br/>
-host=\staging_host<br/>
+host=staging_host<br/>
 user=staging_user<br/>
 passwrd=staging_password<br/>
 
