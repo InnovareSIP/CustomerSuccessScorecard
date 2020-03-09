@@ -29,7 +29,7 @@ host=
 user=
 password=
 # Running the script
-The script takes you arguments: \[name of the enviroment you want to connect to\] \[name of database you copy\]
+The script takes you arguments: \[name of the enviroment you want to connect to\] \[name of database to copy\]
 
 \> py datagenerate.py local mock_data_db
 
