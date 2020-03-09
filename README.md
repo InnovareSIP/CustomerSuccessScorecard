@@ -11,24 +11,30 @@ this will install all required modules for the script to run
 
 Obtain your Big Query service account keys by following this guide and save it to your local machine.
 https://cloud.google.com/bigquery/docs/quickstarts/quickstart-client-libraries
-Rename the file to bqkeys.json and move it to the /config folder of this scripts directory
+Rename the file to bqconfig.json and move it to the /config folder of this scripts directory
 
-Create a config.ini in the /config directory. Edit the file to include the following information in order to configure it to connect to your databases.  You only need to configure the databases you would like to connect to ie if you would only like to connect only to a local database this file only needs to the \[local\] section to be configured. 
+Create a dbconfig.ini in the /config directory. Edit the file to include the correct host, user, and password of the database you would like to connect to.
+
+You only need to configure the databases you would like to connect to ie if you would only like to connect only to a local database this file only needs to the \[local\] section to be configured. 
+
+Your dbconfig file should look as follows:
 
 \[local\]<br/>
-host=\[local host\]<br/>
-user=\[local user\]<br/>
-passwrd=\[local password\]<br/>
+host=local_host<br/>
+user=local_user<br/>
+passwrd=local_password<br/>
 
 \[staging\]<br/>
-host=\[staging host\]<br/>
-user=\[staging user\]<br/>
-passwrd=\[staging password\]<br/>
+host=\staging_host<br/>
+user=staging_user<br/>
+passwrd=staging_password<br/>
 
 \[production\]<br/>
-host=\[production host\]<br/>
-user=\[production username\]<br/>
-passwrd=\[production password\]<br/>
+host=production_host<br/>
+user=production_username<br/>
+passwrd=production_password<br/>
+
+Your config folder should now contain a dbconfig.ini file and a bqconfig.json file
 
 # Running the script
 The script requires two arguments in order to run: \[name of the enviroment you want to connect to\] \[name of database to copy\]<br/>
