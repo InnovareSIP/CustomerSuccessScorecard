@@ -15,15 +15,15 @@ Rename the file to bqkeys.json and move it to the /config folder of this scripts
 
 Create a config.ini in the /config directory. Edit the file to include the following information in order to configure it to connect to your databases.  You only need to configure the databases you would like to connect to ie if you would only like to connect only to a local database this file only needs to the \[local\] section to be configured. 
 
-\[local\]
-host=\[local host\]
-user=\[local user\]
-passwrd=\[local password\]
+\[local\]<br/>
+host=\[local host\]<br/>
+user=\[local user\]<br/>
+passwrd=\[local password\]<br/>
 
-\[staging\]
-host=\[staging host\]
-user=\[staging user\]
-passwrd=\[staging password\]
+\[staging\]<br/>
+host=\[staging host\]<br/>
+user=\[staging user\]<br/>
+passwrd=\[staging password\]<br/>
 
 \[production\]
 host=\[production host\]
@@ -31,8 +31,8 @@ user=\[production username\]
 passwrd=\[production password\]
 
 # Running the script
-The script requires two arguments in order to run: \[name of the enviroment you want to connect to\] \[name of database to copy\]
-Example:
+The script requires two arguments in order to run: \[name of the enviroment you want to connect to\] \[name of database to copy\]<br/>
+Example:<br/>
 \> py datagenerate.py local mock_data_db
 
 This would copy all tables from your local mock_data_db and upload them to big query inside of the dataset mock_data_db. Local CSV files would be saved to the /output folder of the scripts directory
