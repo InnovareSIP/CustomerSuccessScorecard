@@ -6,12 +6,12 @@ import csv
 import os
 import configparser
 import sys
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./config/bqcofig.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./config/bqconfig.json"
 
 def getCreds(env):
     try:
         config = configparser.ConfigParser()
-        config.read("./config/dbconfig.ini")
+        config.read("/Users/ferdeleon/Innovare-Product-Team/DataGenerate/config/dbconfig.ini")
         creds = (dict(config.items(env)))
         return creds
     except:
@@ -31,12 +31,12 @@ def makeFile(res,cursor,table):
         output_file.writerow(row)
 
 def connectData(dbName, creds):
-    try: 
+    try:
         db_conn = mariaDB.connect(host=creds['host'], user=creds['user'], passwd=creds['passwrd'])
         print(f'Connetected to {dbName} sucessfully')
     except:
         print(f'Could not connect to {dbName}')
-    else:    
+    else:
         cur = db_conn.cursor()
         copyTables(cur,dbName)
 
@@ -78,7 +78,7 @@ def sendtobq(table, dbName):
             job_config.autodetect = True
             with open(filename, "rb") as source_file:
                 job = client.load_table_from_file(source_file, table_ref, job_config=job_config)
-            job.result()  
+            job.result()
             print(f'Loaded {job.output_rows} rows into {dataset_id}:{table_id}.')
 
 def main():
