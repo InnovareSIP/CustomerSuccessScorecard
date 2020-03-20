@@ -1,13 +1,8 @@
 # DataGenerate
-
-Automate process to take a SQL file to generate a CSV file and upload it to an external site
-
+Automate process to take a SQL file to generate a CSV file and upload it to an external site 
 # Requirements
-
 Python 3.8
-
 # Installation
-
 In the scripts directory run
 
 pip3 install -r requirements.txt
@@ -20,7 +15,7 @@ Rename the file to bqconfig.json and move it to the /config folder of this scrip
 
 Create a dbconfig.ini in the /config directory. Edit the file to include the correct host, user, and password of the databases you would like to connect to.
 
-You only need to configure the databases you would like to connect to ie if you would only like to connect only to a local database this file only needs to the \[local\] section to be configured.
+You only need to configure the databases you would like to connect to ie if you would only like to connect only to a local database this file only needs to the \[local\] section to be configured. 
 
 Your dbconfig file should look as follows:
 
@@ -42,11 +37,8 @@ passwrd=production_password<br/>
 Your config folder should now contain a dbconfig.ini file and a bqconfig.json file
 
 # Running the script
-
 The script requires two arguments in order to run: \[name of the enviroment you want to connect to\] \[name of database to copy\]<br/>
 Example:<br/>
 \> py datagenerate.py local mock_data_db
-or
-python3 datagenerate.py local mock_data_db
 
 This would copy all tables from your local mock_data_db and upload them to big query inside of the dataset mock_data_db. Local CSV files would be saved to the /output folder of the scripts directory

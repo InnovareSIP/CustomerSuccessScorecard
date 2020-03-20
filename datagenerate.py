@@ -6,12 +6,15 @@ import csv
 import os
 import configparser
 import sys
+from utils import bqueries
+import datetime
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./config/bqconfig.json"
+
 
 def getCreds(env):
     try:
         config = configparser.ConfigParser()
-        config.read("/Users/ferdeleon/Innovare-Product-Team/DataGenerate/config/dbconfig.ini")
+        config.read("./config/dbconfig.ini")
         creds = (dict(config.items(env)))
         return creds
     except:
@@ -31,12 +34,12 @@ def makeFile(res,cursor,table):
         output_file.writerow(row)
 
 def connectData(dbName, creds):
-    try:
+    try: 
         db_conn = mariaDB.connect(host=creds['host'], user=creds['user'], passwd=creds['passwrd'])
         print(f'Connetected to {dbName} sucessfully')
     except:
         print(f'Could not connect to {dbName}')
-    else:
+    else:    
         cur = db_conn.cursor()
         copyTables(cur,dbName)
 
@@ -74,21 +77,36 @@ def sendtobq(table, dbName):
         else:
             table_ref = dataset.table(table_id)
             job_config = bigquery.LoadJobConfig()
-            job_config.source_format = bigquery.SourceFormat.CSV
             job_config.autodetect = True
+            job_config.source_format = bigquery.SourceFormat.CSV
             with open(filename, "rb") as source_file:
                 job = client.load_table_from_file(source_file, table_ref, job_config=job_config)
-            job.result()
+            job.result()  
             print(f'Loaded {job.output_rows} rows into {dataset_id}:{table_id}.')
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("envName", help="Name of the enviroment you would like to copy from")
-    parser.add_argument("dbName", help="Name of the database you would like to copy")
-    args = parser.parse_args()
-    credentials = getCreds(args.envName)
-    if(credentials):
-        connectData(args.dbName, credentials)
+def sendQuery(query,dbName,dataset,func):
+    client = bigquery.Client()
+    table_id = f"{client.project}.{dbName}.{func}-{datetime.date.today()}"
+    job_config = bigquery.QueryJobConfig(destination=table_id)
+    query_job = client.query(query,job_config=job_config)
+    results = query_job.result()
+    for row in results:
+        print(row)
 
+def main():
+    parser = argparse.ArgumentParser(description="CL app to connect MySQL to BigQuery")
+    parser.add_argument("--envName", help="Name of the enviroment you would like to copy from")
+    parser.add_argument("--dbName", help="Name of the database you would like to copy")
+    parser.add_argument("--q", help="Query function to call on dataset")
+    parser.add_argument("--dataset", help="dataset to run query on")
+    args = parser.parse_args()
+    if args.dbName and args.envName:
+        credentials = getCreds(args.envName)
+        if(credentials):
+            connectData(args.dbName, credentials)
+    if args.q and args.dataset:
+        query = getattr(bqueries, args.q)(args.dataset)
+        sendQuery(query,args.dbName,args.dataset,args.q)
+    
 if __name__=="__main__":
     main()
