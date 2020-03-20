@@ -6,6 +6,8 @@ import csv
 import os
 import configparser
 import sys
+import glob
+import fnmatch
 from utils import bqueries
 import datetime
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./config/bqconfig.json"
@@ -48,7 +50,7 @@ def copyTables(cur,dbName):
     for table in tablenames:
         query = f'SELECT * FROM {dbName}.{table}'
         makeFile(getData(query, cur), cur, table)
-        sendtobq(table,dbName)
+        sendtobq(table,dbName,"output")
 
 def getTableNames(cursor, dbName):
     query = f'SHOW TABLES from {dbName}'
@@ -56,7 +58,7 @@ def getTableNames(cursor, dbName):
     tablenames = [i[0] for i in cursor.fetchall()]
     return tablenames
 
-def sendtobq(table, dbName):
+def sendtobq(table, dbName, location):
     try:
         client = bigquery.Client()
     except:
@@ -64,7 +66,7 @@ def sendtobq(table, dbName):
         sys.exit()
     else:
         print("Connected to Big Query successfully")
-        filename = f'./output/{table}.csv'
+        filename = f'./{location}/{table}.csv'
         dataset_id = f'{client.project}.{dbName}'
         table_id = table
         dataset = bigquery.Dataset(dataset_id)
@@ -97,7 +99,14 @@ def sendScoreCard(dataset,query,date):
     job_config = bigquery.QueryJobConfig(destination=table_id)
     query_job = client.query(query,job_config=job_config)
     results = query_job.result()
-  
+
+def export(dataset):
+    for f in os.listdir('./export'):
+        if fnmatch.fnmatch(f, '*.csv'):
+            f = os.path.splitext(f)[0]
+            print(f)
+            sendtobq(f,dataset,"export")
+
 def main():
     parser = argparse.ArgumentParser(description="CL app to connect MySQL to BigQuery")
     parser.add_argument("--envName", help="Name of the enviroment you would like to copy from")
@@ -105,6 +114,7 @@ def main():
     parser.add_argument("--q", help="Query function to call on dataset")
     parser.add_argument("--dataset", help="dataset to run query on")
     parser.add_argument("--sc", help="Query function to call on dataset")
+    parser.add_argument("--export", help="Export files in ./export to dataset")
     args = parser.parse_args()
     if args.dbName and args.envName:
         credentials = getCreds(args.envName)
@@ -119,6 +129,8 @@ def main():
         date = date.strftime("%b_%d_%Y_%H_%M")
         query = bqueries.getAll(args.dataset)
         sendScoreCard(args.sc,query,date)
-    
+    if args.export:
+        export(args.export)
+
 if __name__=="__main__":
     main()

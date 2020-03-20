@@ -200,8 +200,10 @@ def nextMileStoneDate(dataset):
 
 def getAll(dataset):
     query=f""" 
+
         WITH table_1 AS (
-            SELECT organizations.name AS tbl1_organization,  SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0                     END)/NULLIF(COUNT(milestones.completed),0) *  100 AS milestones_completed_percentage
+            ALTER organizations ADD time TIMESTAMP
+            SELECT organizations.name AS tbl1_organization,  SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0) *  100 AS milestones_completed_percentage
             FROM {dataset}.organizations
             LEFT JOIN 
             {dataset}.milestones ON milestones.organization_id = organizations.id
@@ -350,7 +352,7 @@ def getAll(dataset):
                         WHERE milestones.due_on <= CURRENT_DATE AND milestones.completed = 0  
                         GROUP BY tbl18_organization
             )
-            SELECT tbl1_organization AS organization, dashboards, milestones_completed_percentage,login_Percentage,last_login_week,last_login_month,goals,goals_with_cycle,goals_with_cycle_actions,cycle_in_progress,action_in_progress,goals_cycle_submitted,goals_closed,cycles_closed,percentage_off_track,miletones_completed_percentage,  next_milestone_date
+            SELECT tbl1_organization AS organization, time, dashboards, milestones_completed_percentage,login_Percentage,last_login_week,last_login_month,goals,goals_with_cycle,goals_with_cycle_actions,cycle_in_progress,action_in_progress,goals_cycle_submitted,goals_closed,cycles_closed,percentage_off_track,miletones_completed_percentage,  next_milestone_date
             FROM table_1
             LEFT JOIN table_2 ON table_1.tbl1_organization = table_2.tbl2_organization
             LEFT JOIN table_3 ON table_2.tbl2_organization = table_3.tbl3_organization
@@ -368,5 +370,7 @@ def getAll(dataset):
             LEFT JOIN table_16 ON table_15.tbl15_organization = table_16.tbl16_organization
             LEFT JOIN table_17 ON table_16.tbl16_organization = table_17.tbl17_organization
             LEFT JOIN table_18 ON table_17.tbl17_organization = table_18.tbl18_organization
+
+
     """ 
     return query
