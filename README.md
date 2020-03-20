@@ -37,8 +37,15 @@ passwrd=production_password<br/>
 Your config folder should now contain a dbconfig.ini file and a bqconfig.json file
 
 # Running the script
-The script requires two arguments in order to run: \[name of the enviroment you want to connect to\] \[name of database to copy\]<br/>
+The script requires two arguments in order to copy tables on to bigquery: --evnName \[name of the enviroment you want to connect to\] --dbName \[name of database to copy\]<br/>
 Example:<br/>
-\> py datagenerate.py local mock_data_db
+\> python3 datagenerate.py --envlocal local --dbName mock_data_db
 
 This would copy all tables from your local mock_data_db and upload them to big query inside of the dataset mock_data_db. Local CSV files would be saved to the /output folder of the scripts directory
+
+The script can also send gener to an existing bigquery dataset, arguments required, --sc \[name of dataset to send results to\] --dataset \[name of dataset to query\]
+
+Example:
+python3 datagenerate.py --sc score_card_results --dataset inno_db_export
+
+This would query the inno_db_export dataset in your BigQuery project and create a table in the score_card_results dataset with the results.

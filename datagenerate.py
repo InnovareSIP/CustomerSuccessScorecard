@@ -84,29 +84,41 @@ def sendtobq(table, dbName):
             job.result()  
             print(f'Loaded {job.output_rows} rows into {dataset_id}:{table_id}.')
 
-def sendQuery(query,dbName,dataset,func):
+def sendQuery(query,dbName,dataset,func,date):
     client = bigquery.Client()
-    table_id = f"{client.project}.{dbName}.{func}-{datetime.date.today()}"
+    table_id = f"{client.project}.{dbName}.{func}_{date}"
     job_config = bigquery.QueryJobConfig(destination=table_id)
     query_job = client.query(query,job_config=job_config)
     results = query_job.result()
-    for row in results:
-        print(row)
 
+def sendScoreCard(dataset,query,date):
+    client = bigquery.Client()
+    table_id = f"{client.project}.{dataset}.scorecard_{date}"
+    job_config = bigquery.QueryJobConfig(destination=table_id)
+    query_job = client.query(query,job_config=job_config)
+    results = query_job.result()
+  
 def main():
     parser = argparse.ArgumentParser(description="CL app to connect MySQL to BigQuery")
     parser.add_argument("--envName", help="Name of the enviroment you would like to copy from")
     parser.add_argument("--dbName", help="Name of the database you would like to copy")
     parser.add_argument("--q", help="Query function to call on dataset")
     parser.add_argument("--dataset", help="dataset to run query on")
+    parser.add_argument("--sc", help="Query function to call on dataset")
     args = parser.parse_args()
     if args.dbName and args.envName:
         credentials = getCreds(args.envName)
         if(credentials):
             connectData(args.dbName, credentials)
     if args.q and args.dataset:
+        date = date.strftime("%b_%d_%Y_%H_%M")
         query = getattr(bqueries, args.q)(args.dataset)
-        sendQuery(query,args.dbName,args.dataset,args.q)
+        sendQuery(query,args.dbName,args.dataset,args.q,date)
+    if args.sc and args.dataset:
+        date = datetime.datetime.today()
+        date = date.strftime("%b_%d_%Y_%H_%M")
+        query = bqueries.getAll(args.dataset)
+        sendScoreCard(args.sc,query,date)
     
 if __name__=="__main__":
     main()

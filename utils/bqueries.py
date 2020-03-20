@@ -185,6 +185,7 @@ def getMilestonesCompleted(dataset):
             {dataset}.milestones ON milestones.organization_id = organizations.id
             GROUP BY organization 
     """
+    return query
 
 def nextMileStoneDate(dataset):
     query=f"""
@@ -195,6 +196,7 @@ def nextMileStoneDate(dataset):
             WHERE milestones.due_on <= CURRENT_DATE AND milestones.completed = 0  
             GROUP BY organization
     """
+    return query
 
 def getAll(dataset):
     query=f""" 
@@ -367,3 +369,4 @@ def getAll(dataset):
             LEFT JOIN table_17 ON table_16.tbl16_organization = table_17.tbl17_organization
             LEFT JOIN table_18 ON table_17.tbl17_organization = table_18.tbl18_organization
     """ 
+    return query
