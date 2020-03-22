@@ -1,7 +1,7 @@
 from inspect import getmembers, isfunction
 from . import bqueries 
 
-#Excutes all funtions in bqueries.py and builds to sql query
+#Excutes all funtions in bqueries.py and builds the sql query to send to BigQuery
 def get_scorecard(dataset):
     #Get all function names as a list
     list_of_functions =  [i[0] for i in [o for o in getmembers(bqueries) if isfunction(o[1])]]

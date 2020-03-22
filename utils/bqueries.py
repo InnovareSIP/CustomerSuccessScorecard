@@ -139,6 +139,7 @@ def actions_in_progress(dataset, tbl=""):
         """
     return query
 
+#returns number of goals and cycles with the status of 'submitted'
 def goals_cycles_submitted(dataset, tbl=""):
     query=f"""
         SELECT organizations.name AS {tbl}organization, COUNT(cycles.status_id) as goals_cycles_submitted
@@ -152,6 +153,7 @@ def goals_cycles_submitted(dataset, tbl=""):
         """
     return query
 
+#returns number of goals with the status of 'closed'
 def goals_closed(dataset, tbl=""):
     query=f""" 
        SELECT organizations.name AS {tbl}organization, COUNT(goals.status_id) AS goals_closed    
@@ -163,6 +165,7 @@ def goals_closed(dataset, tbl=""):
         """
     return query
 
+#returns the number cycles with the status of 'closed'
 def cycle_closed(dataset, tbl=""):
     query=f""" 
         SELECT organizations.name AS {tbl}organization, COUNT(cycles.status_id) AS cycle_closed
@@ -175,6 +178,7 @@ def cycle_closed(dataset, tbl=""):
         """
     return query
 
+#returns the number of actions that are in progress and past their end date 
 def actions_off_track(dataset, tbl=""):
     query = f""" 
        SELECT organizations.name AS {tbl}organization, ROUND(SUM(CASE WHEN actions.end_date < CURRENT_TIMESTAMP then 1 else 0 END)/NULLIF(sum(CASE WHEN actions.start_date IS NOT NULL THEN 1 ELSE 0 end), 0),2)  as actions_off_track
@@ -189,6 +193,7 @@ def actions_off_track(dataset, tbl=""):
         """
     return query
 
+#returns percentage of milestones with the status of 'completed' rounded to 2 decimal places
 def milestones_completed_percentage(dataset, tbl=""):
     query = f"""
         SELECT organizations.name AS {tbl}organization,  SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0)  AS milestones_completed_percentage
@@ -199,6 +204,7 @@ def milestones_completed_percentage(dataset, tbl=""):
     """
     return query
 
+#returns the title of the next milestone closest to today's date
 def next_milestone_title(dataset, tbl=""):
     query=f"""
         SELECT organizations.name AS {tbl}organization, MIN(milestones.due_on), milestones.title AS next_milestone_title
@@ -210,6 +216,7 @@ def next_milestone_title(dataset, tbl=""):
     """
     return query
 
+#returns the date of the next milestone closest to today's date
 def next_milestone_date(dataset, tbl=""):
     query=f"""
         SELECT organizations.name AS {tbl}organization, MIN(milestones.due_on) AS next_milestone_date
@@ -221,6 +228,7 @@ def next_milestone_date(dataset, tbl=""):
     """
     return query
 
+#returns the location of organization as a state abbreviation
 def location_state(dataset, tbl=""):
     query=f"""
         SELECT organizations.name AS {tbl}organization, regions.abbr AS location_state

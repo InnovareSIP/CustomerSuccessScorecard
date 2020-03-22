@@ -11,10 +11,12 @@ import fnmatch
 from utils import bqueries, scorecard
 import datetime
 
+#Get BigQuery credentials required to connect to the dataset and run the script
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./config/bqconfig.json"
 
 
-def getCreds(env):
+#Get database credenatials required to connect to local and staging databases
+def get_creds(env):
     try:
         config = configparser.ConfigParser()
         config.read("./config/dbconfig.ini")
@@ -23,11 +25,31 @@ def getCreds(env):
     except:
         print('Could not find dbconfig.ini')
 
-def getData(query, cursor):
+#Conect to database, use credentials from dbconfig.ini
+def connectData(db_name, creds):
+    try: 
+        db_conn = mariaDB.connect(host=creds['host'], user=creds['user'], passwd=creds['passwrd'])
+        print(f'Connetected to {db_name} sucessfully')
+    except:
+        print(f'Could not connect to {db_name}')
+    else:    
+        cur = db_conn.cursor()
+        copyTables(cur,db_name)
+
+#execute on database that is connected    
+def get_data(query, cursor):
     cursor.execute(query)
     res = cursor.fetchall()
     return res
 
+#Get the names of the connected database and create a list of them
+def getTableNames(cursor, db_name):
+    query = f'SHOW TABLES from {db_name}'
+    cursor.execute(query)
+    tablenames = [i[0] for i in cursor.fetchall()]
+    return tablenames
+
+#make csv files from connected database and output them to ./output
 def makeFile(res,cursor,table):
     col_names = [i[0] for i in cursor.description]
     tablename = f'{table}.csv'
@@ -36,30 +58,16 @@ def makeFile(res,cursor,table):
     for row in res:
         output_file.writerow(row)
 
-def connectData(dbName, creds):
-    try: 
-        db_conn = mariaDB.connect(host=creds['host'], user=creds['user'], passwd=creds['passwrd'])
-        print(f'Connetected to {dbName} sucessfully')
-    except:
-        print(f'Could not connect to {dbName}')
-    else:    
-        cur = db_conn.cursor()
-        copyTables(cur,dbName)
-
-def copyTables(cur,dbName):
-    tablenames = getTableNames(cur,dbName)
+#Copy tables from ./output folder and send them to a BigQuery dataset, specified my db_name
+def copy_tables(cur,db_name):
+    tablenames = getTableNames(cur,db_name)
     for table in tablenames:
-        query = f'SELECT * FROM {dbName}.{table}'
-        makeFile(getData(query, cur), cur, table)
-        sendtobq(table,dbName,"output")
+        query = f'SELECT * FROM {db_name}.{table}'
+        make_file(get_data(query, cur), cur, table)
+        sendtobq(table,db_name,"output")
 
-def getTableNames(cursor, dbName):
-    query = f'SHOW TABLES from {dbName}'
-    cursor.execute(query)
-    tablenames = [i[0] for i in cursor.fetchall()]
-    return tablenames
-
-def sendtobq(table, dbName, location):
+#configure the BigQuery job that will be created the dataset on tables
+def sendtobq(table, db_name, location):
     try:
         client = bigquery.Client()
     except:
@@ -68,7 +76,7 @@ def sendtobq(table, dbName, location):
     else:
         print("Connected to Big Query successfully")
         filename = f'./{location}/{table}.csv'
-        dataset_id = f'{client.project}.{dbName}'
+        dataset_id = f'{client.project}.{db_name}'
         table_id = table
         dataset = bigquery.Dataset(dataset_id)
         try:
@@ -96,24 +104,17 @@ def sendtobq(table, dbName, location):
                 print(job.errors)  
             print(f'Loaded {job.output_rows} rows into {dataset_id}:{table_id}.')
 
-def sendQuery(query,dbName,dataset,func,date):
+#Configues and send the SQL queries from th./utils directory to BigQuery
+def send_query(query,db_name,dataset,func,date):
     client = bigquery.Client()
-    table_id = f"{client.project}.{dbName}.{func}_{date}"
+    table_id = f"{client.project}.{db_name}.{func}_{date}"
     job_config = bigquery.QueryJobConfig(destination=table_id)
     query_job = client.query(query,job_config=job_config)
     results = query_job.result()
 
-def sendScoreCardCreate(dataset,query,date):
-    client = bigquery.Client()
-    table_id = f"{client.project}.{dataset}.scorecard_{date}"
-    job_config = bigquery.QueryJobConfig(
-        destination=table_id
-        )
-    query_job = client.query(query,job_config=job_config)
-    results = query_job.result()
-    print(f'Loaded {job.output_rows} rows into {dataset_id}:{table_id}.')
-
-def sendScoreCardAppend(dataset,query,date, tablename=None):
+#Configures the job for BigQuery to take the SQL query to create the scorecard
+#Will append to a table if a tablename is given, else it will create a new table
+def send_scorecard(dataset,query,date, tablename=None):
     client = bigquery.Client()
     if tablename:
          table_id = f"{client.project}.{dataset}.{tablename}"
@@ -126,6 +127,7 @@ def sendScoreCardAppend(dataset,query,date, tablename=None):
     query_job = client.query(query,job_config=job_config)
     results = query_job.result()
 
+#export csv files from ./export directory to BigQuery
 def export(dataset):
     for f in os.listdir('./export'):
         if fnmatch.fnmatch(f, '*.csv'):
@@ -134,34 +136,33 @@ def export(dataset):
             sendtobq(f,dataset,"export")
 
 def main():
+    #define command line arguments the script will accept
     parser = argparse.ArgumentParser(description="CL app to connect MySQL to BigQuery")
     parser.add_argument("--envName", help="Name of the enviroment you would like to copy from")
-    parser.add_argument("--dbName", help="Name of the database you would like to copy")
+    parser.add_argument("--db_name", help="Name of the database you would like to copy")
     parser.add_argument("--q", help="Query function to call on dataset")
     parser.add_argument("--dataset", help="dataset to run query on")
     parser.add_argument("--sc", help="Query function to call on dataset")
     parser.add_argument("--export", help="Export files in ./export to dataset")
     parser.add_argument("--table", help="Export files in ./export to dataset")
-
     args = parser.parse_args()
-    if args.dbName and args.envName:
-        credentials = getCreds(args.envName)
+    #get todays date to add to final scorecard table
+    date = datetime.datetime.today()
+    #formats the date for BigQuery
+    date = date.strftime("%b_%d_%Y_%H_%M")
+    if args.db_name and args.envName:
+        credentials = get_creds(args.envName)
         if(credentials):
-            connectData(args.dbName, credentials)
+            connectData(args.db_name, credentials)
     if args.q and args.dataset:
-        date = date.strftime("%b_%d_%Y_%H_%M")
         query = getattr(bqueries, args.q)(args.dataset)
-        sendQuery(query,args.dbName,args.dataset,args.q,date)
+        send_query(query,args.db_name,args.dataset,args.q,date)
     if args.sc and args.dataset and args.table:
-        date = datetime.datetime.today()
-        date = date.strftime("%b_%d_%Y_%H_%M")
         query = bqueries.getAll(args.dataset)
-        sendScoreCardAppend(args.sc,query,date,args.table)
+        send_scorecard(args.sc,query,date,args.table)
     if args.sc and args.dataset:
-        date = datetime.datetime.today()
-        date = date.strftime("%b_%d_%Y_%H_%M")
         query = scorecard.get_scorecard(args.dataset)
-        sendScoreCardAppend(args.sc,query,date)
+        send_scorecard(args.sc,query,date)
     if args.export:
         export(args.export)
 
