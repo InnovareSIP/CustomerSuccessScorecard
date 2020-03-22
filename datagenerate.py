@@ -8,7 +8,7 @@ import configparser
 import sys
 import glob
 import fnmatch
-from utils import bqueries
+from utils import bqueries, scorecard
 import datetime
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./config/bqconfig.json"
@@ -160,7 +160,7 @@ def main():
     if args.sc and args.dataset:
         date = datetime.datetime.today()
         date = date.strftime("%b_%d_%Y_%H_%M")
-        query = bqueries.getAll(args.dataset)
+        query = scorecard.get_scorecard(args.dataset)
         sendScoreCardAppend(args.sc,query,date)
     if args.export:
         export(args.export)

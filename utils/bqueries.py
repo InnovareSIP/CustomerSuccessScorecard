@@ -1,79 +1,88 @@
-def getDashboards(dataset):
+#Each function return a valid SQL query which can be run on its own to look at snapshot of that data
+#These queries assume the Innovare Production Schema as of 3/22/2020
+#Adding a new function to this module will also add that query to the scorecard when scorecard.get_scorecard() is run
+# Adding a new funciton to this module:
+# Function names MUST be named exactly as the alias of the column you are returning from the query
+# Each function can only reference one column alias
+# This means that the results table of, for example, the dashboard column can only return the organization name, which is default,
+# and a dashboard column
+
+# This function returns an organization column,by default, and dashboard column displaying the number of dashboard that organization has
+# function name [dashboards] matches returned column name [dashboards]
+# In the query this is shown in the, COUNT(organization_charts.embed_url) AS dashboards, statement. Where 'AS dashboards' is the alias of the column
+# this query will return and also the name of the function    
+def dashboards(dataset, tbl=""):
     query = f""" 
-    SELECT organizations.name AS organization, COUNT(organization_charts.embed_url) AS Dashboards
+    SELECT organizations.name AS {tbl}organization, COUNT(organization_charts.embed_url) AS dashboards
     FROM 
        {dataset}.organizations LEFT JOIN
         {dataset}.organization_charts ON organization_charts.organization_id = organizations.id
-        GROUP BY {dataset}.organization
+        GROUP BY {tbl}organization
     """ 
     return query
 
-def getLoginOnce(dataset):
-    query = f"""SELECT organizations.name AS organization, ROUND(COUNT(CAST(users.last_login AS TIMESTAMP))/NULLIF(COUNT(CAST(users.organization_id AS INT64)),0),2 ) AS Login_Percentage
+#return th number of users who logged in once to the app
+def login_percentage_once(dataset, tbl="1"):
+    query = f"""SELECT organizations.name AS {tbl}organization, ROUND(COUNT(CAST(users.last_login AS TIMESTAMP))/NULLIF(COUNT(CAST(users.organization_id AS INT64)),0),2 ) AS login_percentage_once
                 FROM
                     {dataset}.organizations 
                     LEFT JOIN
                     {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id
-                GROUP BY organization"""
+                GROUP BY {tbl}organization"""
     return query
 
-def getLoginWeek(dataset):
+#returns the percentage of users who have logged in to the app in the last week rounded to two decimal places
+def login_percentage_week(dataset, tbl="1"):
     query = f""" 
-            SELECT organizations.name AS organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 7 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0), 2) as last_login_week
+            SELECT organizations.name AS {tbl}organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 7 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0), 2) as login_percentage_week
           FROM 
             {dataset}.organizations LEFT JOIN
             {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id 
-            GROUP BY organization  
+            GROUP BY {tbl}organization  
         """
     return query
 
-def getLoginMonth(dataset):
+#returns the percentage of users who have logged in to the app in the last month rounded to two decimal places
+def login_percentage_month(dataset, tbl="1"):
     query = f""" 
-            SELECT organizations.name AS organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 28 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0),2) as last_login_month
+            SELECT organizations.name AS {tbl}organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 28 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0),2) as login_percentage_month
           FROM 
             {dataset}.organizations LEFT JOIN
             {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id 
-            GROUP BY organization  
+            GROUP BY {tbl}organization  
         """
     return query
 
-def getLoginRange(dataset,inter):
+#returns the total number of goals each organization has regardless of status 
+def number_of_goals(dataset, tbl="1"):
     query = f""" 
-            SELECT organizations.name AS organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL {inter} DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0) 2) as last_login_{inter}_days
-          FROM 
-            {dataset}.organizations LEFT JOIN
-            {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id 
-            GROUP BY organization  
-        """
-    return query
-
-def getGoals(dataset):
-    query = f""" 
-        SELECT organizations.name AS organization, COUNT(goals.status_id) AS goals
+        SELECT organizations.name AS {tbl}organization, COUNT(goals.status_id) AS number_of_goals
         FROM 
             {dataset}.organizations LEFT JOIN
             {dataset}.goals ON goals.organization_id = organizations.id
-        GROUP BY organization  
+        GROUP BY {tbl}organization  
         """
     return query
 
-def getGoalsCycles():
+#returns number of goals that also have a cycle
+def goals_with_cycle(dataset, tbl=""):
     query= f""" 
-        SELECT organizations.name AS organization,IFNULL(COUNT(DISTINCT cycles.goal_id),0) AS goals_with_cycle
+        SELECT organizations.name AS {tbl}organization,IFNULL(COUNT(DISTINCT cycles.goal_id),0) AS goals_with_cycle
             FROM(
                 {dataset}.goals 
                 INNER JOIN 
                 {dataset}.cycles ON cycles.goal_id = goals.id 
                 FULL JOIN
-                {dataset}t.organizations ON organization_id = organizations.id
+                {dataset}.organizations ON organization_id = organizations.id
             )
-            GROUP BY organization
+            GROUP BY {tbl}organization
         """
     return query
 
-def getGoalsCyclesActions(dataset):
+#returns number of goals that also have a cycle AND action
+def goals_with_cycle_actions(dataset, tbl=""):
     query= f""" 
-            WITH cte AS (SELECT organizations.name AS organization, goals.id AS goals, cycles.id AS cycle, actions.id AS actions 
+            WITH cte AS (SELECT organizations.name AS {tbl}organization, goals.id AS goals, cycles.id AS cycle, actions.id AS actions 
                 FROM(
                     {dataset}.actions 
                     INNER JOIN
@@ -83,290 +92,143 @@ def getGoalsCyclesActions(dataset):
                     FULL JOIN
                     {dataset}.organizations ON goals.organization_id = organizations.id
                     )
-                GROUP BY organization, goals, cycle, actions)
-                SELECT organization, COUNT(DISTINCT goals) AS goals_with_cycle_actions
+                GROUP BY {tbl}organization, goals, cycle, actions)
+                SELECT {tbl}organization, COUNT(DISTINCT goals) AS goals_with_cycle_actions
                 FROM cte
-                GROUP BY organization
+                GROUP BY {tbl}organization
             """
     return query
 
-def getGoalInProgress(dataset):
+#returns number of goals with the status of 'in progress'
+def goal_in_progress(dataset, tbl="1"):
     query=f""" 
-       SELECT organizations.name AS organization, COUNT(goals.status_id) AS goal_in_progress    
+       SELECT organizations.name AS {tbl}organization, COUNT(goals.status_id) AS goal_in_progress    
             FROM 
             {dataset}.goals 
             FULL JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id AND goals.status_id = 5
-            GROUP BY organization
+            GROUP BY {tbl}organization
             """
     return query
 
-def getCycleInProgress(dataset):
+#returns number of cycles with the status of 'in progress'
+def cycle_in_progress(dataset, tbl=""):
     query=f""" 
-        SELECT organizations.name AS organization, COUNT(cycles.status_id) AS cycle_in_progress
+        SELECT organizations.name AS {tbl}organization, COUNT(cycles.status_id) AS cycle_in_progress
             FROM {dataset}.cycles 
             LEFT JOIN
             {dataset}.goals ON cycles.goal_id = goals.id AND cycles.status_id=5
             FULL JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id 
-            GROUP BY organization
+            GROUP BY {tbl}organization
         """
     return query
 
-def getActionInProgress(dataset):
+#returns number of actions with the status of 'in progress'
+def actions_in_progress(dataset, tbl=""):
     query=f""" 
-       SELECT organizations.name AS organization, COUNT(actions.status_id) AS action_in_progress    
+       SELECT organizations.name AS {tbl}organization, actions.status_id AS actions_in_progress    
             FROM {dataset}.actions 
-            LEFT JOIN
+            INNER JOIN
             {dataset}.cycles ON actions.cycle_id = cycles.id AND actions.status_id = 2
-            LEFT JOIN
+            INNER JOIN
             {dataset}.goals ON cycles.goal_id = goals.id 
             FULL JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id 
-            GROUP BY organization
+            GROUP BY {tbl}organization, actions_in_progress  
         """
     return query
 
-def getGoalCycleSubmitted():
+def goals_cycles_submitted(dataset, tbl=""):
     query=f"""
-        SELECT organizations.name AS organization, COUNT(cycles.status_id) as goals_cycles_submitted
+        SELECT organizations.name AS {tbl}organization, COUNT(cycles.status_id) as goals_cycles_submitted
             FROM  {dataset}.cycles 
             LEFT JOIN
             {dataset}.goals ON cycles.goal_id = goals.id AND cycles.status_id=2 AND goals.status_id=2
             FULL JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id 
-            GROUP BY organization
+            GROUP BY {tbl}organization
             ORDER BY 1
         """
     return query
 
-def getGoalsClosed(dataset):
+def goals_closed(dataset, tbl=""):
     query=f""" 
-       SELECT organizations.name AS organization, COUNT(goals.status_id) AS goals_closed    
+       SELECT organizations.name AS {tbl}organization, COUNT(goals.status_id) AS goals_closed    
             FROM 
             {dataset}.goals 
             FULL JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id AND goals.status_id = 7
-            GROUP BY organization
+            GROUP BY {tbl}organization
         """
     return query
 
-def getCyclesClosed(dataset):
+def cycle_closed(dataset, tbl=""):
     query=f""" 
-        SELECT organizations.name AS organization, COUNT(cycles.status_id) AS cycle_closed
+        SELECT organizations.name AS {tbl}organization, COUNT(cycles.status_id) AS cycle_closed
             FROM {dataset}.cycles 
             LEFT JOIN
             {dataset}.goals ON cycles.goal_id = goals.id AND cycles.status_id=7
             FULL JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id 
-            GROUP BY organization
+            GROUP BY {tbl}organization
         """
     return query
 
-def getOffTrack(dataset):
+def actions_off_track(dataset, tbl=""):
     query = f""" 
-       SELECT organizations.name AS organization, SUM(CASE WHEN actions.end_date < CURRENT_TIMESTAMP then 1 else 0 END)/NULLIF(sum(CASE WHEN actions.start_date IS NOT NULL THEN 1 ELSE 0 end), 0)  as actions_off_track
+       SELECT organizations.name AS {tbl}organization, ROUND(SUM(CASE WHEN actions.end_date < CURRENT_TIMESTAMP then 1 else 0 END)/NULLIF(sum(CASE WHEN actions.start_date IS NOT NULL THEN 1 ELSE 0 end), 0),2)  as actions_off_track
             FROM {dataset}.actions
             INNER JOIN 
-            {dataset}.cycles ON cycles.id = actions.cycle_id
+            {dataset}.cycles ON cycles.id = actions.cycle_id AND actions.status_id = 2
             INNER JOIN
             {dataset}.goals ON goals.id =cycles.goal_id 
             FULL JOIN 
             {dataset}.organizations ON organizations.id = goals.organization_id 
-        GROUP BY organization
+        GROUP BY {tbl}organization
         """
     return query
 
-def getMilestonesCompleted(dataset):
+def milestones_completed_percentage(dataset, tbl=""):
     query = f"""
-        SELECT organizations.name AS organization,  SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0)  AS miletones_completed_percentage
+        SELECT organizations.name AS {tbl}organization,  SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0)  AS milestones_completed_percentage
             FROM {dataset}.organizations
             LEFT JOIN 
             {dataset}.milestones ON milestones.organization_id = organizations.id
-            GROUP BY organization 
+            GROUP BY {tbl}organization 
     """
     return query
 
-def nextMileStoneDate(dataset):
+def next_milestone_title(dataset, tbl=""):
     query=f"""
-        SELECT organizations.name AS organization, MIN(milestones.due_on) AS next_milestone_date, milestones.title AS next_milestone_title
+        SELECT organizations.name AS {tbl}organization, MIN(milestones.due_on), milestones.title AS next_milestone_title
             FROM {dataset}.milestones
             LEFT JOIN
             {dataset}.organizations ON milestones.organization_id = organizations.id
             WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0  
-            GROUP BY organization,next_milestone_title
+            GROUP BY {tbl}organization,next_milestone_title
     """
     return query
 
-def getAll(dataset):
-    query=f""" 
-        WITH table_1 AS (
-            SELECT organizations.name AS tbl1_organization,  ROUND(SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0),2)AS milestones_completed_percentage
-            FROM {dataset}.organizations
-            LEFT JOIN 
-            {dataset}.milestones ON milestones.organization_id = organizations.id
-            GROUP BY tbl1_organization), 
-            table_2 AS (
-                    SELECT organizations.name AS tbl2_organization, COUNT(organization_charts.embed_url) AS dashboards,  
-                    FROM 
-                    {dataset}.organizations LEFT JOIN
-                        {dataset}.organization_charts ON organization_charts.organization_id = organizations.id
-                        GROUP BY tbl2_organization),
-            table_3 AS(
-                    SELECT organizations.name AS tbl3_organization, ROUND(COUNT(CAST(users.last_login AS TIMESTAMP))/NULLIF(COUNT(CAST(users.organization_id AS INT64)),0),2) AS login_Percentage
-                    FROM
-                        {dataset}.organizations 
-                        LEFT JOIN
-                        {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id
-                    GROUP BY tbl3_organization
-            ),
-            table_4 AS(
-                    SELECT organizations.name AS tbl4_organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 7 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0), 2) as last_login_week
-                    FROM 
-                        {dataset}.organizations LEFT JOIN
-                        {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id 
-                        GROUP BY tbl4_organization 
-            ),
-            table_5 AS(
-                        SELECT organizations.name AS tbl5_organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 28 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0), 2) as last_login_month
-                    FROM 
-                        {dataset}.organizations LEFT JOIN
-                        {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id 
-                        GROUP BY tbl5_organization  
-            ),
+def next_milestone_date(dataset, tbl=""):
+    query=f"""
+        SELECT organizations.name AS {tbl}organization, MIN(milestones.due_on) AS next_milestone_date
+            FROM {dataset}.milestones
+            LEFT JOIN
+            {dataset}.organizations ON milestones.organization_id = organizations.id
+            WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0  
+            GROUP BY {tbl}organization
+    """
+    return query
 
-            table_7 AS(
-                    SELECT organizations.name AS tbl7_organization, COUNT(goals.status_id) AS goals
-                    FROM 
-                        {dataset}.organizations LEFT JOIN
-                        {dataset}.goals ON goals.organization_id = organizations.id
-                    GROUP BY tbl7_organization  
-            ),
-            table_8 AS(
-                    SELECT organizations.name AS tbl8_organization,IFNULL(COUNT(DISTINCT cycles.goal_id),0) AS goals_with_cycle
-                    FROM(
-                        {dataset}.goals 
-                        INNER JOIN 
-                        {dataset}.cycles ON cycles.goal_id = goals.id 
-                        FULL JOIN
-                        {dataset}.organizations ON organization_id = organizations.id
-                    )
-                    GROUP BY tbl8_organization
-            ),
-            table_9 AS(
-                    WITH cte AS (SELECT organizations.name AS tbl9_organization, goals.id AS goals, cycles.id AS cycle, actions.id AS actions 
-                        FROM(
-                            {dataset}.actions 
-                            INNER JOIN
-                            {dataset}.cycles ON actions.cycle_id = cycles.id 
-                            INNER JOIN 
-                            {dataset}.goals ON cycles.goal_id = goals.id 
-                            FULL JOIN
-                            {dataset}.organizations ON goals.organization_id = organizations.id
-                            )
-                        GROUP BY tbl9_organization, goals, cycle, actions)
-                        SELECT tbl9_organization, COUNT(DISTINCT goals) AS goals_with_cycle_actions
-                        FROM cte
-                        GROUP BY tbl9_organization
-            ),
-            table_10 AS(
-                    SELECT organizations.name AS tbl10_organization, COUNT(goals.status_id) AS goal_in_progress    
-                        FROM 
-                        {dataset}.goals 
-                        FULL JOIN
-                        {dataset}.organizations ON goals.organization_id = organizations.id AND goals.status_id = 5
-                        GROUP BY tbl10_organization
-            ),
-            table_11 AS(
-                    SELECT organizations.name AS tbl11_organization, COUNT(cycles.status_id) AS cycle_in_progress
-                        FROM {dataset}.cycles 
-                        LEFT JOIN
-                        {dataset}.goals ON cycles.goal_id = goals.id AND cycles.status_id=5
-                        FULL JOIN
-                        {dataset}.organizations ON goals.organization_id = organizations.id 
-                        GROUP BY tbl11_organization
-            ),
-            table_12 AS(
-                SELECT organizations.name AS tbl12_organization, COUNT(actions.status_id) AS action_in_progress    
-                        FROM {dataset}.actions 
-                        LEFT JOIN
-                        {dataset}.cycles ON actions.cycle_id = cycles.id AND actions.status_id = 2
-                        LEFT JOIN
-                        {dataset}.goals ON cycles.goal_id = goals.id 
-                        FULL JOIN
-                        {dataset}.organizations ON goals.organization_id = organizations.id 
-                        GROUP BY tbl12_organization
-            ),
-            table_13 AS(
-                    SELECT organizations.name AS tbl13_organization, COUNT(cycles.status_id) as goals_cycle_submitted
-                        FROM  {dataset}.cycles 
-                        LEFT JOIN
-                        {dataset}.goals ON cycles.goal_id = goals.id AND cycles.status_id=2 AND goals.status_id=5
-                        FULL JOIN
-                        {dataset}.organizations ON goals.organization_id = organizations.id 
-                        GROUP BY tbl13_organization
-                        ORDER BY 1
-            ),
-            table_14 AS(
-                SELECT organizations.name AS tbl14_organization, COUNT(goals.status_id) AS goals_closed    
-                        FROM 
-                        {dataset}.goals 
-                        FULL JOIN
-                        {dataset}.organizations ON goals.organization_id = organizations.id AND goals.status_id = 7
-                        GROUP BY tbl14_organization
-            ),
-            table_15 AS(
-                    SELECT organizations.name AS tbl15_organization, COUNT(cycles.status_id) AS cycles_closed
-                        FROM {dataset}.cycles 
-                        LEFT JOIN
-                        {dataset}.goals ON cycles.goal_id = goals.id AND cycles.status_id=7
-                        FULL JOIN
-                        {dataset}.organizations ON goals.organization_id = organizations.id 
-                        GROUP BY tbl15_organization
-            ),
-            table_16 AS(
-                SELECT organizations.name AS tbl16_organization, ROUND(SUM(CASE WHEN actions.end_date < CURRENT_TIMESTAMP then 1 else 0 END)/NULLIF(sum(CASE WHEN actions.start_date IS NOT NULL THEN 1 ELSE 0 end), 0), 2)  as percentage_actions_off_track
-                        FROM {dataset}.actions
-                        INNER JOIN 
-                        {dataset}.cycles ON cycles.id = actions.cycle_id
-                        INNER JOIN
-                        {dataset}.goals ON goals.id =cycles.goal_id 
-                        FULL JOIN 
-                        {dataset}.organizations ON organizations.id = goals.organization_id 
-                    GROUP BY tbl16_organization
-            ),
-            table_17 AS(
-                    SELECT organizations.name AS tbl17_organization,  ROUND(SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0),2)  AS miletones_completed_percentage
-                        FROM {dataset}.organizations
-                        LEFT JOIN 
-                        {dataset}.milestones ON milestones.organization_id = organizations.id
-                        GROUP BY tbl17_organization 
-            ),
-            table_18 AS(
-                    SELECT organizations.name AS tbl18_organization, MIN(milestones.due_on) AS next_milestone_date, milestones.title as next_milestone_title
-                        FROM {dataset}.milestones
-                        LEFT JOIN
-                        {dataset}.organizations ON milestones.organization_id = organizations.id
-                        WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0  
-                        GROUP BY tbl18_organization,next_milestone_title
-            )
-            SELECT tbl1_organization AS organization,dashboards,login_Percentage,last_login_week,last_login_month,goals,goals_with_cycle,goals_with_cycle_actions,cycle_in_progress,action_in_progress,goals_cycle_submitted,goals_closed,cycles_closed,percentage_actions_off_track,milestones_completed_percentage,next_milestone_date,next_milestone_title,CURRENT_TIMESTAMP AS created_at 
-            FROM table_1
-            LEFT JOIN table_2 ON table_1.tbl1_organization = table_2.tbl2_organization
-            LEFT JOIN table_3 ON table_2.tbl2_organization = table_3.tbl3_organization
-            LEFT JOIN table_4 ON table_3.tbl3_organization = table_4.tbl4_organization
-            LEFT JOIN table_5 ON table_4.tbl4_organization = table_5.tbl5_organization
-            LEFT JOIN table_7 ON table_5.tbl5_organization = table_7.tbl7_organization
-            LEFT JOIN table_8 ON table_7.tbl7_organization = table_8.tbl8_organization
-            LEFT JOIN table_9 ON table_8.tbl8_organization = table_9.tbl9_organization
-            LEFT JOIN table_10 ON table_9.tbl9_organization = table_10.tbl10_organization
-            LEFT JOIN table_11 ON table_10.tbl10_organization = table_11.tbl11_organization
-            LEFT JOIN table_12 ON table_11.tbl11_organization = table_12.tbl12_organization
-            LEFT JOIN table_13 ON table_12.tbl12_organization = table_13.tbl13_organization
-            LEFT JOIN table_14 ON table_13.tbl13_organization = table_14.tbl14_organization
-            LEFT JOIN table_15 ON table_14.tbl14_organization = table_15.tbl15_organization
-            LEFT JOIN table_16 ON table_15.tbl15_organization = table_16.tbl16_organization
-            LEFT JOIN table_17 ON table_16.tbl16_organization = table_17.tbl17_organization
-            LEFT JOIN table_18 ON table_17.tbl17_organization = table_18.tbl18_organization
-    """ 
+def location_state(dataset, tbl=""):
+    query=f"""
+        SELECT organizations.name AS {tbl}organization, regions.abbr AS location_state
+            FROM {dataset}.regions
+            LEFT JOIN
+            {dataset}.addresses ON regions.id = addresses.region_id
+            LEFT JOIN  
+            {dataset}.organizations  ON addresses.id = organizations.address_id
+            GROUP BY {tbl}organization, location_state
+    """
     return query
