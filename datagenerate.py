@@ -114,57 +114,81 @@ def send_query(query,db_name,dataset,func,date):
 
 #Configures the job for BigQuery to take the SQL query to create the scorecard
 #Will append to a table if a tablename is given, else it will create a new table
-def send_scorecard(dataset,query,date, tablename=None):
+def send_scorecard(query,date,dataset=None, tablename=None):
     client = bigquery.Client()
-    if tablename:
-         table_id = f"{client.project}.{dataset}.{tablename}"
-    else:
+    dataset_id = f'{client.project}.{dataset}'
+    #check for supplied agruments and create the appropriate table and/or dataset
+    if tablename and dataset:
+        table_id = f"{client.project}.{dataset}.{tablename}"
+    elif dataset:
         table_id = f"{client.project}.{dataset}.scorecard_{date}"
+    elif tablename:
+        table_id = f"{client.project}.score_card_result_{date}.{tablename}"
+    else:
+        dataset_id = f'{client.project}.score_card_result_{date}'
+        table_id = f"{client.project}.score_card_result_{date}.scorecard_{date}"
+    dataset = bigquery.Dataset(dataset_id)
     job_config = bigquery.QueryJobConfig(
         destination=table_id,
         write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
         )
+    try:
+        client.get_dataset(dataset_id)
+        print(f'Dataset {dataset_id} exists: inserting data')
+    except NotFound:
+        print(f'Dataset {dataset_id} is not found:creating dataset')
+        dataset = client.create_dataset(dataset)
     query_job = client.query(query,job_config=job_config)
-    results = query_job.result()
+    print(f'Loaded rows into {dataset_id}:{table_id}.')
 
 #export csv files from ./export directory to BigQuery
 def export(dataset):
     for f in os.listdir('./export'):
         if fnmatch.fnmatch(f, '*.csv'):
             f = os.path.splitext(f)[0]
-            print(f)
             sendtobq(f,dataset,"export")
 
 def main():
     #define command line arguments the script will accept
     parser = argparse.ArgumentParser(description="CL app to connect MySQL to BigQuery")
-    parser.add_argument("--envName", help="Name of the enviroment you would like to copy from")
-    parser.add_argument("--db_name", help="Name of the database you would like to copy")
-    parser.add_argument("--q", help="Query function to call on dataset")
-    parser.add_argument("--dataset", help="dataset to run query on")
-    parser.add_argument("--sc", help="Query function to call on dataset")
-    parser.add_argument("--export", help="Export files in ./export to dataset")
-    parser.add_argument("--table", help="Export files in ./export to dataset")
+    group1 = parser.add_argument_group("Send scorecard", "Only the scorecard argument is required, omiting the dataset argument will create a new dataset for the scorecard result table, omiting the table argument will create a new table with a timestamp as its name")
+    group3 = parser.add_argument_group("Export files","export csv files from the ./export directory.")
+    group2 = parser.add_argument_group("Database Connection", "Specify an enviroment:local, staging, production and a database to copy from")
+    group1.add_argument("-dataset", help="Query function to call on dataset")
+    group1.add_argument("-table", help="name of table to send scorecard results")
+    group1.add_argument("-scorecard", help="dataset to run query on")
+    group2.add_argument("-env", help="Name of the enviroment you would like to copy from")
+    group2.add_argument("-db", help="Name of the database you would like to copy")
+    group3.add_argument("-export", help="Export files in ./export to dataset. Specify the dataset to send the data.")
+    parser.add_argument("-q", help="Query function to call on dataset")
     args = parser.parse_args()
     #get todays date to add to final scorecard table
     date = datetime.datetime.today()
     #formats the date for BigQuery
     date = date.strftime("%b_%d_%Y_%H_%M")
-    if args.db_name and args.envName:
+    #Check for command line arguments
+    if args.db and args.env:
         credentials = get_creds(args.envName)
         if(credentials):
             connectData(args.db_name, credentials)
-    if args.q and args.dataset:
+    elif args.export:
+        export(args.export)
+    elif args.q and args.dataset:
         query = getattr(bqueries, args.q)(args.dataset)
         send_query(query,args.db_name,args.dataset,args.q,date)
-    if args.sc and args.dataset and args.table:
-        query = bqueries.getAll(args.dataset)
-        send_scorecard(args.sc,query,date,args.table)
-    if args.sc and args.dataset:
-        query = scorecard.get_scorecard(args.dataset)
-        send_scorecard(args.sc,query,date)
-    if args.export:
-        export(args.export)
+    elif args.scorecard and args.dataset and args.table:
+        query = scorecard.get_scorecard(args.scorecard)
+        send_scorecard(query,date,args.dataset,args.table)
+    elif args.scorecard and args.dataset:
+        query = scorecard.get_scorecard(args.scorecard)
+        send_scorecard(query,date,args.dataset)
+    elif args.scorecard and args.table:
+        query = scorecard.get_scorecard(args.scorecard)
+        send_scorecard(query,date,None,args.table)
+    elif args.scorecard:
+        query = scorecard.get_scorecard(args.scorecard)
+        send_scorecard(query,date)
+    
 
 if __name__=="__main__":
     main()
