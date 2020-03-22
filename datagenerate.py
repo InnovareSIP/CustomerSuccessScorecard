@@ -10,6 +10,7 @@ import glob
 import fnmatch
 from utils import bqueries
 import datetime
+
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"]="./config/bqconfig.json"
 
 
@@ -80,10 +81,19 @@ def sendtobq(table, dbName, location):
             table_ref = dataset.table(table_id)
             job_config = bigquery.LoadJobConfig()
             job_config.autodetect = True
+            job_config.skip_leading_rows = 1
+            job_config.max_bad_records = 10
+            job_config.allow_quoted_newlines = True
+            job_config.null_marker = "NULL"
+            job_config.qoute = ""
             job_config.source_format = bigquery.SourceFormat.CSV
             with open(filename, "rb") as source_file:
                 job = client.load_table_from_file(source_file, table_ref, job_config=job_config)
-            job.result()  
+            try:
+                job.result()
+            except:
+
+                print(job.errors)  
             print(f'Loaded {job.output_rows} rows into {dataset_id}:{table_id}.')
 
 def sendQuery(query,dbName,dataset,func,date):
@@ -93,10 +103,26 @@ def sendQuery(query,dbName,dataset,func,date):
     query_job = client.query(query,job_config=job_config)
     results = query_job.result()
 
-def sendScoreCard(dataset,query,date):
+def sendScoreCardCreate(dataset,query,date):
     client = bigquery.Client()
     table_id = f"{client.project}.{dataset}.scorecard_{date}"
-    job_config = bigquery.QueryJobConfig(destination=table_id)
+    job_config = bigquery.QueryJobConfig(
+        destination=table_id
+        )
+    query_job = client.query(query,job_config=job_config)
+    results = query_job.result()
+    print(f'Loaded {job.output_rows} rows into {dataset_id}:{table_id}.')
+
+def sendScoreCardAppend(dataset,query,date, tablename=None):
+    client = bigquery.Client()
+    if tablename:
+         table_id = f"{client.project}.{dataset}.{tablename}"
+    else:
+        table_id = f"{client.project}.{dataset}.scorecard_{date}"
+    job_config = bigquery.QueryJobConfig(
+        destination=table_id,
+        write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+        )
     query_job = client.query(query,job_config=job_config)
     results = query_job.result()
 
@@ -115,6 +141,8 @@ def main():
     parser.add_argument("--dataset", help="dataset to run query on")
     parser.add_argument("--sc", help="Query function to call on dataset")
     parser.add_argument("--export", help="Export files in ./export to dataset")
+    parser.add_argument("--table", help="Export files in ./export to dataset")
+
     args = parser.parse_args()
     if args.dbName and args.envName:
         credentials = getCreds(args.envName)
@@ -124,11 +152,16 @@ def main():
         date = date.strftime("%b_%d_%Y_%H_%M")
         query = getattr(bqueries, args.q)(args.dataset)
         sendQuery(query,args.dbName,args.dataset,args.q,date)
+    if args.sc and args.dataset and args.table:
+        date = datetime.datetime.today()
+        date = date.strftime("%b_%d_%Y_%H_%M")
+        query = bqueries.getAll(args.dataset)
+        sendScoreCardAppend(args.sc,query,date,args.table)
     if args.sc and args.dataset:
         date = datetime.datetime.today()
         date = date.strftime("%b_%d_%Y_%H_%M")
         query = bqueries.getAll(args.dataset)
-        sendScoreCard(args.sc,query,date)
+        sendScoreCardAppend(args.sc,query,date)
     if args.export:
         export(args.export)
 

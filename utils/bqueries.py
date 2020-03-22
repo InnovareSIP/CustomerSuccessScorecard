@@ -9,40 +9,40 @@ def getDashboards(dataset):
     return query
 
 def getLoginOnce(dataset):
-    query = f"""SELECT organizations.name AS organization, FLOOR(COUNT(users.last_login)/NULLIF(COUNT(users.organization_id),0) * 100) AS Login_Percentage
+    query = f"""SELECT organizations.name AS organization, ROUND(COUNT(CAST(users.last_login AS TIMESTAMP))/NULLIF(COUNT(CAST(users.organization_id AS INT64)),0),2 ) AS Login_Percentage
                 FROM
                     {dataset}.organizations 
                     LEFT JOIN
-                    {dataset}.users ON users.organization_id = organizations.id
+                    {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id
                 GROUP BY organization"""
     return query
 
 def getLoginWeek(dataset):
     query = f""" 
-            SELECT organizations.name AS organization, FLOOR(SUM(CASE WHEN users.last_login > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 7 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0) * 100) as last_login_week
+            SELECT organizations.name AS organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 7 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0), 2) as last_login_week
           FROM 
             {dataset}.organizations LEFT JOIN
-            {dataset}.users ON users.organization_id = organizations.id 
+            {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id 
             GROUP BY organization  
         """
     return query
 
 def getLoginMonth(dataset):
     query = f""" 
-            SELECT organizations.name AS organization, FLOOR(SUM(CASE WHEN users.last_login > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 28 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0) * 100) as last_login_month
+            SELECT organizations.name AS organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 28 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0),2) as last_login_month
           FROM 
             {dataset}.organizations LEFT JOIN
-            {dataset}.users ON users.organization_id = organizations.id 
+            {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id 
             GROUP BY organization  
         """
     return query
 
 def getLoginRange(dataset,inter):
     query = f""" 
-            SELECT organizations.name AS organization, FLOOR(SUM(CASE WHEN users.last_login > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL {inter} DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0) * 100) as last_login_{inter}_days
+            SELECT organizations.name AS organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL {inter} DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0) 2) as last_login_{inter}_days
           FROM 
             {dataset}.organizations LEFT JOIN
-            {dataset}.users ON users.organization_id = organizations.id 
+            {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id 
             GROUP BY organization  
         """
     return query
@@ -165,7 +165,7 @@ def getCyclesClosed(dataset):
 
 def getOffTrack(dataset):
     query = f""" 
-       SELECT organizations.name AS organization, SUM(CASE WHEN actions.end_date < CURRENT_TIMESTAMP then 1 else 0 END)/NULLIF(sum(CASE WHEN actions.start_date IS NOT NULL THEN 1 ELSE 0 end), 0) * 100 as actions_off_track
+       SELECT organizations.name AS organization, SUM(CASE WHEN actions.end_date < CURRENT_TIMESTAMP then 1 else 0 END)/NULLIF(sum(CASE WHEN actions.start_date IS NOT NULL THEN 1 ELSE 0 end), 0)  as actions_off_track
             FROM {dataset}.actions
             INNER JOIN 
             {dataset}.cycles ON cycles.id = actions.cycle_id
@@ -179,7 +179,7 @@ def getOffTrack(dataset):
 
 def getMilestonesCompleted(dataset):
     query = f"""
-        SELECT organizations.name AS organization,  SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0) * 100 AS miletones_completed_percentage
+        SELECT organizations.name AS organization,  SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0)  AS miletones_completed_percentage
             FROM {dataset}.organizations
             LEFT JOIN 
             {dataset}.milestones ON milestones.organization_id = organizations.id
@@ -189,21 +189,19 @@ def getMilestonesCompleted(dataset):
 
 def nextMileStoneDate(dataset):
     query=f"""
-        SELECT organizations.name AS organization, MIN(milestones.due_on) AS next_milestone_date
+        SELECT organizations.name AS organization, MIN(milestones.due_on) AS next_milestone_date, milestones.title AS next_milestone_title
             FROM {dataset}.milestones
             LEFT JOIN
             {dataset}.organizations ON milestones.organization_id = organizations.id
-            WHERE milestones.due_on <= CURRENT_DATE AND milestones.completed = 0  
-            GROUP BY organization
+            WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0  
+            GROUP BY organization,next_milestone_title
     """
     return query
 
 def getAll(dataset):
     query=f""" 
-
         WITH table_1 AS (
-            ALTER organizations ADD time TIMESTAMP
-            SELECT organizations.name AS tbl1_organization,  SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0) *  100 AS milestones_completed_percentage
+            SELECT organizations.name AS tbl1_organization,  ROUND(SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0),2)AS milestones_completed_percentage
             FROM {dataset}.organizations
             LEFT JOIN 
             {dataset}.milestones ON milestones.organization_id = organizations.id
@@ -215,25 +213,25 @@ def getAll(dataset):
                         {dataset}.organization_charts ON organization_charts.organization_id = organizations.id
                         GROUP BY tbl2_organization),
             table_3 AS(
-                    SELECT organizations.name AS tbl3_organization, FLOOR(COUNT(users.last_login)/NULLIF(COUNT(users.organization_id),0) * 100) AS login_Percentage
+                    SELECT organizations.name AS tbl3_organization, ROUND(COUNT(CAST(users.last_login AS TIMESTAMP))/NULLIF(COUNT(CAST(users.organization_id AS INT64)),0),2) AS login_Percentage
                     FROM
                         {dataset}.organizations 
                         LEFT JOIN
-                        {dataset}.users ON users.organization_id = organizations.id
+                        {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id
                     GROUP BY tbl3_organization
             ),
             table_4 AS(
-                    SELECT organizations.name AS tbl4_organization, FLOOR(SUM(CASE WHEN users.last_login > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 7 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0) * 100) as last_login_week
+                    SELECT organizations.name AS tbl4_organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 7 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0), 2) as last_login_week
                     FROM 
                         {dataset}.organizations LEFT JOIN
-                        {dataset}.users ON users.organization_id = organizations.id 
+                        {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id 
                         GROUP BY tbl4_organization 
             ),
             table_5 AS(
-                        SELECT organizations.name AS tbl5_organization, FLOOR(SUM(CASE WHEN users.last_login > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 28 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0) * 100) as last_login_month
+                        SELECT organizations.name AS tbl5_organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 28 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0), 2) as last_login_month
                     FROM 
                         {dataset}.organizations LEFT JOIN
-                        {dataset}.users ON users.organization_id = organizations.id 
+                        {dataset}.users ON CAST(users.organization_id AS INT64) = organizations.id 
                         GROUP BY tbl5_organization  
             ),
 
@@ -327,7 +325,7 @@ def getAll(dataset):
                         GROUP BY tbl15_organization
             ),
             table_16 AS(
-                SELECT organizations.name AS tbl16_organization, SUM(CASE WHEN actions.end_date < CURRENT_TIMESTAMP then 1 else 0 END)/NULLIF(sum(CASE WHEN actions.start_date IS NOT NULL THEN 1 ELSE 0 end), 0) * 100 as percentage_off_track
+                SELECT organizations.name AS tbl16_organization, ROUND(SUM(CASE WHEN actions.end_date < CURRENT_TIMESTAMP then 1 else 0 END)/NULLIF(sum(CASE WHEN actions.start_date IS NOT NULL THEN 1 ELSE 0 end), 0), 2)  as percentage_actions_off_track
                         FROM {dataset}.actions
                         INNER JOIN 
                         {dataset}.cycles ON cycles.id = actions.cycle_id
@@ -338,21 +336,21 @@ def getAll(dataset):
                     GROUP BY tbl16_organization
             ),
             table_17 AS(
-                    SELECT organizations.name AS tbl17_organization,  SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0) * 100 AS miletones_completed_percentage
+                    SELECT organizations.name AS tbl17_organization,  ROUND(SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0),2)  AS miletones_completed_percentage
                         FROM {dataset}.organizations
                         LEFT JOIN 
                         {dataset}.milestones ON milestones.organization_id = organizations.id
                         GROUP BY tbl17_organization 
             ),
             table_18 AS(
-                    SELECT organizations.name AS tbl18_organization, MIN(milestones.due_on) AS next_milestone_date
+                    SELECT organizations.name AS tbl18_organization, MIN(milestones.due_on) AS next_milestone_date, milestones.title as next_milestone_title
                         FROM {dataset}.milestones
                         LEFT JOIN
                         {dataset}.organizations ON milestones.organization_id = organizations.id
-                        WHERE milestones.due_on <= CURRENT_DATE AND milestones.completed = 0  
-                        GROUP BY tbl18_organization
+                        WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0  
+                        GROUP BY tbl18_organization,next_milestone_title
             )
-            SELECT tbl1_organization AS organization, time, dashboards, milestones_completed_percentage,login_Percentage,last_login_week,last_login_month,goals,goals_with_cycle,goals_with_cycle_actions,cycle_in_progress,action_in_progress,goals_cycle_submitted,goals_closed,cycles_closed,percentage_off_track,miletones_completed_percentage,  next_milestone_date
+            SELECT tbl1_organization AS organization,dashboards,login_Percentage,last_login_week,last_login_month,goals,goals_with_cycle,goals_with_cycle_actions,cycle_in_progress,action_in_progress,goals_cycle_submitted,goals_closed,cycles_closed,percentage_actions_off_track,milestones_completed_percentage,next_milestone_date,next_milestone_title,CURRENT_TIMESTAMP AS created_at 
             FROM table_1
             LEFT JOIN table_2 ON table_1.tbl1_organization = table_2.tbl2_organization
             LEFT JOIN table_3 ON table_2.tbl2_organization = table_3.tbl3_organization
@@ -370,7 +368,5 @@ def getAll(dataset):
             LEFT JOIN table_16 ON table_15.tbl15_organization = table_16.tbl16_organization
             LEFT JOIN table_17 ON table_16.tbl16_organization = table_17.tbl17_organization
             LEFT JOIN table_18 ON table_17.tbl17_organization = table_18.tbl18_organization
-
-
     """ 
     return query
