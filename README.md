@@ -37,15 +37,28 @@ passwrd=production_password<br/>
 Your config folder should now contain a dbconfig.ini file and a bqconfig.json file
 
 # Running the script
-The script requires two arguments in order to copy tables on to bigquery: --evnName \[name of the enviroment you want to connect to\] --dbName \[name of database to copy\]<br/>
-Example:<br/>
-\> python3 datagenerate.py --envlocal local --dbName mock_data_db
+The script takes the following arguments:
 
-This would copy all tables from your local mock_data_db and upload them to big query inside of the dataset mock_data_db. Local CSV files would be saved to the /output folder of the scripts directory
+Send scorecard:
+  Only the scorecard argument is required, omiting the dataset argument will create a new dataset for the scorecard
+  result table, omiting the table argument will create a new table with a timestamp as its name
 
-The script can also send gener to an existing bigquery dataset, arguments required, --sc \[name of dataset to send results to\] --dataset \[name of dataset to query\]
+  -dataset DATASET      Query function to call on dataset
+  -table TABLE          name of table to send scorecard results
+  -scorecard SCORECARD  dataset to run query on
+
+Export files:
+  export csv files from the ./export directory.
+
+  -export EXPORT        Export files in ./export to dataset. Specify the dataset to send the data.
+
+Database Connection:
+  Specify an enviroment:local, staging, production and a database to copy from
+
+  -env ENV              Name of the enviroment you would like to copy from
+  -db DB                Name of the database you would like to copy
 
 Example:
-python3 datagenerate.py --sc score_card_results --dataset inno_db_export
+python3 datagenerate.py -scorecard score_card_results -dataset inno_db_export
 
 This would query the inno_db_export dataset in your BigQuery project and create a table in the score_card_results dataset with the results.
