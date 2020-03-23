@@ -139,6 +139,7 @@ def send_scorecard(query,date,dataset=None, tablename=None):
         print(f'Dataset {dataset_id} is not found:creating dataset')
         dataset = client.create_dataset(dataset)
     query_job = client.query(query,job_config=job_config)
+    print(query_job.errors)
     print(f'Loaded rows into {dataset_id}:{table_id}.')
 
 #export csv files from ./export directory to BigQuery

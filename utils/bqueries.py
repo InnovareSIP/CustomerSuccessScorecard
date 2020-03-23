@@ -54,11 +54,12 @@ def login_percentage_month(dataset, tbl="1"):
     return query
 
 #returns the total number of goals each organization has regardless of status 
-def number_of_goals(dataset, tbl="1"):
+def goals_number(dataset, tbl="1"):
     query = f""" 
-        SELECT organizations.name AS {tbl}organization, COUNT(goals.status_id) AS number_of_goals
+        SELECT organizations.name AS {tbl}organization, COUNT(goals.status_id) AS goals_number
         FROM 
-            {dataset}.organizations LEFT JOIN
+            {dataset}.organizations 
+            FULL JOIN
             {dataset}.goals ON goals.organization_id = organizations.id
         GROUP BY {tbl}organization  
         """
@@ -114,7 +115,7 @@ def goal_in_progress(dataset, tbl="1"):
 #returns number of cycles with the status of 'in progress'
 def cycle_in_progress(dataset, tbl=""):
     query=f""" 
-        SELECT organizations.name AS {tbl}organization, COUNT(cycles.status_id) AS cycle_in_progress
+        SELECT organizations.name AS {tbl}organization, COUNT(DISTINCT cycles.goal_id) AS cycle_in_progress
             FROM {dataset}.cycles 
             LEFT JOIN
             {dataset}.goals ON cycles.goal_id = goals.id AND cycles.status_id=5
