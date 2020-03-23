@@ -23,5 +23,5 @@ def get_scorecard(dataset):
     q1 = q1.rstrip(",")
     #Build the final query with the correct format and insert a created at column to our final results table
     q1 = f"WITH {q1}\nSELECT tbl1_organization AS organization, {q2} TIMESTAMP('2020-01-19 12:34:56') AS created_at\n FROM table_1\n{q3}"
-    print(q1)
+    
     return q1

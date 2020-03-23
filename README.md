@@ -55,7 +55,7 @@ Export files:
 Database Connection:
   Specify an enviroment:local, staging, production and a database to copy from
 
-  -env ENV              Name of the enviroment you would like to copy from
+  -copy ENV              Name of the enviroment you would like to copy from
   -db DB                Name of the database you would like to copy
 
 Example:
