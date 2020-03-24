@@ -176,7 +176,7 @@ def main():
         export(args.export)
     # elif args.q and args.dataset:
     #     query = getattr(bqueries, args.q)(args.dataset)
-        send_query(query,args.db_name,args.dataset,args.q,date)
+        # send_query(query,args.db_name,args.dataset,args.q,date)
     elif args.scorecard and args.dataset and args.table:
         query = scorecard.get_scorecard(args.scorecard)
         send_scorecard(query,date,args.dataset,args.table)

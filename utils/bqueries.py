@@ -10,7 +10,9 @@
 # This function returns an organization column,by default, and dashboard column displaying the number of dashboard that organization has
 # function name [dashboards] matches returned column name [dashboards]
 # In the query this is shown in the, COUNT(organization_charts.embed_url) AS dashboards, statement. Where 'AS dashboards' is the alias of the column
-# this query will return and also the name of the function    
+# this query will return and also the name of the function  
+
+  
 def dashboards(dataset, tbl=""):
     query = f""" 
     SELECT organizations.name AS {tbl}organization, COUNT(organization_charts.embed_url) AS dashboards
@@ -22,7 +24,7 @@ def dashboards(dataset, tbl=""):
     return query
 
 #return th number of users who logged in once to the app
-def login_percentage_once(dataset, tbl="1"):
+def login_percentage_once(dataset, tbl=""):
     query = f"""SELECT organizations.name AS {tbl}organization, ROUND(COUNT(CAST(users.last_login AS TIMESTAMP))/NULLIF(COUNT(CAST(users.organization_id AS INT64)),0),2 ) AS login_percentage_once
                 FROM
                     {dataset}.organizations 
@@ -32,7 +34,7 @@ def login_percentage_once(dataset, tbl="1"):
     return query
 
 #returns the percentage of users who have logged in to the app in the last week rounded to two decimal places
-def login_percentage_week(dataset, tbl="1"):
+def login_percentage_week(dataset, tbl=""):
     query = f""" 
             SELECT organizations.name AS {tbl}organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 7 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0), 2) as login_percentage_week
           FROM 
@@ -43,7 +45,7 @@ def login_percentage_week(dataset, tbl="1"):
     return query
 
 #returns the percentage of users who have logged in to the app in the last month rounded to two decimal places
-def login_percentage_month(dataset, tbl="1"):
+def login_percentage_month(dataset, tbl=""):
     query = f""" 
             SELECT organizations.name AS {tbl}organization, ROUND(SUM(CASE WHEN CAST(users.last_login AS TIMESTAMP) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(),INTERVAL 28 DAY) THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN users.id IS NOT NULL THEN 1 ELSE 0 END), 0),2) as login_percentage_month
           FROM 
@@ -54,7 +56,7 @@ def login_percentage_month(dataset, tbl="1"):
     return query
 
 #returns the total number of goals each organization has regardless of status 
-def goals_number(dataset, tbl="1"):
+def goals_number(dataset, tbl=""):
     query = f""" 
         SELECT organizations.name AS {tbl}organization, COUNT(goals.status_id) AS goals_number
         FROM 
@@ -101,7 +103,7 @@ def goals_with_cycle_actions(dataset, tbl=""):
     return query
 
 #returns number of goals with the status of 'in progress'
-def goal_in_progress(dataset, tbl="1"):
+def goal_in_progress(dataset, tbl=""):
     query=f""" 
        SELECT organizations.name AS {tbl}organization, COUNT(goals.status_id) AS goal_in_progress    
             FROM 
@@ -109,6 +111,28 @@ def goal_in_progress(dataset, tbl="1"):
             FULL JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id AND goals.status_id = 5
             GROUP BY {tbl}organization
+            """
+    return query
+
+def goals_reached_percentage(dataset, tbl=""):
+    query =f""" 
+        WITH cte AS (SELECT  COUNT(DISTINCT goals.id) as goals_on_track, organizations.id
+            FROM {dataset}.goals
+            INNER JOIN
+            {dataset}.metrics ON goals.metric_id = metrics.id  
+            INNER JOIN
+            {dataset}.cycles ON cycles.goal_id = goals.id  
+            INNER JOIN
+            {dataset}.organizations ON goals.organization_id = organizations.id AND (cycles.progress >= goals.target AND metrics.results_rule = 2) OR (cycles.progress <= goals.target AND metrics.results_rule = 1)
+            GROUP BY organizations.id)
+        SELECT organizations.name AS {tbl}organization, COUNT(goals_on_track)/NULLIF(COUNT(goals.id),0) AS goals_reached_percentage
+            FROM {dataset}.goals
+            LEFT JOIN
+            {dataset}.organizations ON goals.organization_id = organizations.id
+            FULL JOIN
+            cte ON cte.id = organizations.id
+            GROUP BY {tbl}organization
+
             """
     return query
 
