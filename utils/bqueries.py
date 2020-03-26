@@ -12,7 +12,7 @@
 # In the query this is shown in the, COUNT(organization_charts.embed_url) AS dashboards, statement. Where 'AS dashboards' is the alias of the column
 # this query will return and also the name of the function  
 
-  
+#return number of embed dashboards each org has  
 def dashboards(dataset, tbl=""):
     query = f""" 
     SELECT organizations.name AS {tbl}organization, COUNT(organization_charts.embed_url) AS dashboards
@@ -23,7 +23,7 @@ def dashboards(dataset, tbl=""):
     """ 
     return query
 
-#return th number of users who logged in once to the app
+#return the number of users who logged in once to the app
 def login_percentage_once(dataset, tbl=""):
     query = f"""SELECT organizations.name AS {tbl}organization, ROUND(COUNT(CAST(users.last_login AS TIMESTAMP))/NULLIF(COUNT(CAST(users.organization_id AS INT64)),0),2 ) AS login_percentage_once
                 FROM
@@ -114,6 +114,7 @@ def goal_in_progress(dataset, tbl=""):
             """
     return query
 
+#return goals thats that have reached their target w/closed cycles 
 def goals_reached_percentage(dataset, tbl=""):
     query =f""" 
         WITH cte AS (SELECT  COUNT(DISTINCT goals.id) as goals_on_track, organizations.id
@@ -121,12 +122,14 @@ def goals_reached_percentage(dataset, tbl=""):
             INNER JOIN
             {dataset}.metrics ON goals.metric_id = metrics.id  
             INNER JOIN
-            {dataset}.cycles ON cycles.goal_id = goals.id  
+            {dataset}.cycles ON cycles.goal_id = goals.id AND cycles.status_id = 7
             INNER JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id AND (cycles.progress >= goals.target AND metrics.results_rule = 2) OR (cycles.progress <= goals.target AND metrics.results_rule = 1)
             GROUP BY organizations.id)
         SELECT organizations.name AS {tbl}organization, COUNT(goals_on_track)/NULLIF(COUNT(goals.id),0) AS goals_reached_percentage
             FROM {dataset}.goals
+            INNER JOIN
+            {dataset}.cycles ON cycles.goal_id = goals.id AND cycles.status_id = 7
             LEFT JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id
             FULL JOIN

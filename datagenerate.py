@@ -99,7 +99,6 @@ def sendtobq(table, db_name, location):
         try:
             job.result()
         except:
-
             print(job.errors)  
         print(f'Loaded {job.output_rows} rows into {dataset_id}:{table_id}.')
 
@@ -174,21 +173,9 @@ def main():
             connect_data(args.db, credentials)
     elif args.export:
         export(args.export)
-    # elif args.q and args.dataset:
-    #     query = getattr(bqueries, args.q)(args.dataset)
-        # send_query(query,args.db_name,args.dataset,args.q,date)
-    elif args.scorecard and args.dataset and args.table:
-        query = scorecard.get_scorecard(args.scorecard)
-        send_scorecard(query,date,args.dataset,args.table)
-    elif args.scorecard and args.dataset:
-        query = scorecard.get_scorecard(args.scorecard)
-        send_scorecard(query,date,args.dataset)
-    elif args.scorecard and args.table:
-        query = scorecard.get_scorecard(args.scorecard)
-        send_scorecard(query,date,None,args.table)
     elif args.scorecard:
         query = scorecard.get_scorecard(args.scorecard)
-        send_scorecard(query,date)
+        send_scorecard(query,date, args.dataset, args.table)
     
 
 if __name__=="__main__":
