@@ -91,7 +91,8 @@ def sendtobq(table, db_name, location):
         job_config.skip_leading_rows = 1
         job_config.max_bad_records = 10
         job_config.allow_quoted_newlines = True
-        job_config.null_marker = "NULL"
+        #This setting accounts for a csv file that uses the string NULL for null values
+        # job_config.null_marker = "NULL"
         job_config.qoute = ""
         job_config.source_format = bigquery.SourceFormat.CSV
         with open(filename, "rb") as source_file:
