@@ -130,7 +130,7 @@ def goals_reached_percentage(dataset, tbl=""):
             FROM {dataset}.goals
             INNER JOIN
             {dataset}.cycles ON cycles.goal_id = goals.id AND cycles.status_id = 7
-            LEFT JOIN
+            FULL JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id
             FULL JOIN
             cte ON cte.id = organizations.id
@@ -177,7 +177,6 @@ def goals_cycles_submitted(dataset, tbl=""):
             FULL JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id 
             GROUP BY {tbl}organization
-            ORDER BY 1
         """
     return query
 
@@ -214,7 +213,7 @@ def actions_off_track(dataset, tbl=""):
             INNER JOIN 
             {dataset}.cycles ON cycles.id = actions.cycle_id AND actions.status_id = 2
             INNER JOIN
-            {dataset}.goals ON goals.id =cycles.goal_id 
+            {dataset}.goals ON goals.id=cycles.goal_id 
             FULL JOIN 
             {dataset}.organizations ON organizations.id = goals.organization_id 
         GROUP BY {tbl}organization
@@ -224,7 +223,7 @@ def actions_off_track(dataset, tbl=""):
 #returns percentage of milestones with the status of 'completed' rounded to 2 decimal places
 def milestones_completed_percentage(dataset, tbl=""):
     query = f"""
-        SELECT organizations.name AS {tbl}organization,  SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0)  AS milestones_completed_percentage
+        SELECT organizations.name AS {tbl}organization,  ROUND(SUM(CASE WHEN milestones.completed = 1 THEN 1 ELSE 0 END)/NULLIF(COUNT(milestones.completed),0),2)  AS milestones_completed_percentage
             FROM {dataset}.organizations
             LEFT JOIN 
             {dataset}.milestones ON milestones.organization_id = organizations.id
@@ -235,12 +234,12 @@ def milestones_completed_percentage(dataset, tbl=""):
 #returns the title of the next milestone closest to today's date
 def next_milestone_title(dataset, tbl=""):
     query=f"""
-        SELECT organizations.name AS {tbl}organization, MIN(milestones.due_on), milestones.title AS next_milestone_title
+        SELECT organizations.name AS {tbl}organization, MIN(milestones.due_on), MIN(milestones.title) AS next_milestone_title
             FROM {dataset}.milestones
             LEFT JOIN
             {dataset}.organizations ON milestones.organization_id = organizations.id
             WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0  
-            GROUP BY {tbl}organization,next_milestone_title
+            GROUP BY {tbl}organization
     """
     return query
 
