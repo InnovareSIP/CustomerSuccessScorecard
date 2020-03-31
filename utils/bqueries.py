@@ -62,7 +62,7 @@ def goals_number(dataset, tbl=""):
         FROM 
             {dataset}.organizations 
             FULL JOIN
-            {dataset}.goals ON goals.organization_id = organizations.id
+            {dataset}.goals ON goals.organization_id = organizations.id AND goals.status_id = 5
         GROUP BY {tbl}organization  
         """
     return query
@@ -74,7 +74,7 @@ def goals_with_cycle(dataset, tbl=""):
             FROM(
                 {dataset}.goals 
                 INNER JOIN 
-                {dataset}.cycles ON cycles.goal_id = goals.id 
+                {dataset}.cycles ON cycles.goal_id = goals.id AND goals.status_id = 5
                 FULL JOIN
                 {dataset}.organizations ON organization_id = organizations.id
             )
@@ -91,7 +91,7 @@ def goals_with_cycle_actions(dataset, tbl=""):
                     INNER JOIN
                     {dataset}.cycles ON actions.cycle_id = cycles.id 
                     INNER JOIN 
-                    {dataset}.goals ON cycles.goal_id = goals.id 
+                    {dataset}.goals ON cycles.goal_id = goals.id AND goals.status_id = 5
                     FULL JOIN
                     {dataset}.organizations ON goals.organization_id = organizations.id
                     )
@@ -145,7 +145,7 @@ def cycle_in_progress(dataset, tbl=""):
         SELECT organizations.name AS {tbl}organization, COUNT(DISTINCT cycles.goal_id) AS cycle_in_progress
             FROM {dataset}.cycles 
             LEFT JOIN
-            {dataset}.goals ON cycles.goal_id = goals.id AND cycles.status_id=5
+            {dataset}.goals ON cycles.goal_id = goals.id AND cycles.status_id=5 AND goals.status_id = 5 
             FULL JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id 
             GROUP BY {tbl}organization
@@ -160,7 +160,7 @@ def actions_in_progress(dataset, tbl=""):
             INNER JOIN
             {dataset}.cycles ON actions.cycle_id = cycles.id AND actions.status_id = 2
             INNER JOIN
-            {dataset}.goals ON cycles.goal_id = goals.id 
+            {dataset}.goals ON cycles.goal_id = goals.id AND goals.status_id = 5
             FULL JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id 
             GROUP BY {tbl}organization, actions_in_progress  
@@ -173,7 +173,7 @@ def goals_cycles_submitted(dataset, tbl=""):
         SELECT organizations.name AS {tbl}organization, COUNT(cycles.status_id) as goals_cycles_submitted
             FROM  {dataset}.cycles 
             LEFT JOIN
-            {dataset}.goals ON cycles.goal_id = goals.id AND cycles.status_id=2 AND goals.status_id=2
+            {dataset}.goals ON cycles.goal_id = goals.id AND cycles.status_id=2 AND goals.status_id= 2
             FULL JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id 
             GROUP BY {tbl}organization
@@ -234,24 +234,34 @@ def milestones_completed_percentage(dataset, tbl=""):
 #returns the title of the next milestone closest to today's date
 def next_milestone_title(dataset, tbl=""):
     query=f"""
-        SELECT organizations.name AS {tbl}organization, MIN(milestones.due_on), MIN(milestones.title) AS next_milestone_title
+        WITH cte AS (SELECT organization_id AS oid, MIN(milestones.due_on) AS due
             FROM {dataset}.milestones
-            LEFT JOIN
-            {dataset}.organizations ON milestones.organization_id = organizations.id
-            WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0  
-            GROUP BY {tbl}organization
+            WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0
+            GROUP BY oid)
+            SELECT organizations.name as {tbl}organization, milestones.title AS next_milestone_title
+            FROM {dataset}.milestones
+            INNER JOIN 
+            cte ON cte.due = milestones.due_on AND milestones.organization_id = cte.oid AND milestones.completed = 0
+            INNER JOIN 
+            {dataset}.organizations ON organizations.id = cte.oid
+            GROUP BY {tbl}organization, next_milestone_title
     """
     return query
 
 #returns the date of the next milestone closest to today's date
 def next_milestone_date(dataset, tbl=""):
     query=f"""
-        SELECT organizations.name AS {tbl}organization, MIN(milestones.due_on) AS next_milestone_date
+        WITH cte AS (SELECT organization_id AS oid, MIN(milestones.due_on) AS due
             FROM {dataset}.milestones
-            LEFT JOIN
-            {dataset}.organizations ON milestones.organization_id = organizations.id
-            WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0  
-            GROUP BY {tbl}organization
+            WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0
+            GROUP BY oid)
+            SELECT organizations.name as {tbl}organization, milestones.due_on AS next_milestone_date
+            FROM {dataset}.milestones
+            INNER JOIN 
+            cte ON cte.due = milestones.due_on AND milestones.organization_id = cte.oid AND milestones.completed = 0
+            INNER JOIN 
+            {dataset}.organizations ON organizations.id = cte.oid
+            GROUP BY {tbl}organization, next_milestone_date
     """
     return query
 
@@ -267,3 +277,5 @@ def location_state(dataset, tbl=""):
             GROUP BY {tbl}organization, location_state
     """
     return query
+
+ 

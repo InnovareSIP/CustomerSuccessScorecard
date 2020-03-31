@@ -140,7 +140,9 @@ def send_scorecard(query,date,dataset=None, tablename=None):
     query_job = client.query(query,job_config=job_config)
     if(query_job.errors):
         print(query_job.errors)
-    print(f'Loaded rows into {dataset_id}:{table_id}.')
+    else:
+         print(f'Loaded rows into {dataset_id}:{table_id}.')
+    
 
 #export csv files from ./export directory to BigQuery
 def export(dataset):
@@ -152,15 +154,15 @@ def export(dataset):
 def main():
     #define command line arguments the script will accept
     parser = argparse.ArgumentParser(description="CL app to connect MySQL to BigQuery")
-    group1 = parser.add_argument_group("Send scorecard", "Only the scorecard argument is required, omiting the dataset argument will create a new dataset for the scorecard result table, omiting the table argument will create a new table with a timestamp as its name")
+    group1 = parser.add_argument_group("Send scorecard", "Only the datasource argument is required, omiting the dataset argument will create a new dataset for the scorecard result table, omiting the table argument will create a new table with a timestamp as its name")
     group3 = parser.add_argument_group("Export files","export csv files from the ./export directory.")
     group2 = parser.add_argument_group("Database Connection", "Specify an enviroment:local, staging, production and a database to copy from")
-    group1.add_argument("-dataset", help="Query function to call on dataset")
-    group1.add_argument("-table", help="name of table to send scorecard results")
-    group1.add_argument("-scorecard", help="dataset to run query on")
-    group2.add_argument("-copy", help="Name of the enviroment you would like to copy from")
-    group2.add_argument("-db", help="Name of the database you would like to copy")
-    group3.add_argument("-export", help="Export files in ./export to dataset. Specify the dataset to send the data.")
+    group1.add_argument("-dataset", help="name of dataset to create/send scorecard results")
+    group1.add_argument("-table", help="name of table to create/send scorecard results")
+    group1.add_argument("-datasource", help="dataset to run query on")
+    group2.add_argument("-copyfrom", help="Name of the enviroment you would like to copy from")
+    group2.add_argument("-database", help="Name of the database you would like to copy")
+    group3.add_argument("-bqimport", help="Export files in ./export to dataset. Specify the dataset to send the data.")
     # parser.add_argument("-q", help="Query function to call on dataset")
     args = parser.parse_args()
     #get todays date to add to final scorecard table
@@ -168,14 +170,14 @@ def main():
     #formats the date for BigQuery
     date = date.strftime("%b_%d_%Y_%H_%M")
     #Check for command line arguments
-    if args.db and args.copy:
+    if args.database and args.copyfrom:
         credentials = get_creds(args.copy)
         if(credentials):
             connect_data(args.db, credentials)
-    elif args.export:
-        export(args.export)
-    elif args.scorecard:
-        query = scorecard.get_scorecard(args.scorecard)
+    elif args.bqimport:
+        export(args.bqimport)
+    elif args.datasource:
+        query = scorecard.get_scorecard(args.datasource)
         send_scorecard(query,date, args.dataset, args.table)
     
 

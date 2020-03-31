@@ -39,26 +39,29 @@ Your config folder should now contain a dbconfig.ini file and a bqconfig.json fi
 # Running the script
 The script takes the following arguments:
 
+-h or --help will display the following msg on the command line and exit
+
 Send scorecard:
   Only the scorecard argument is required, omiting the dataset argument will create a new dataset for the scorecard
   result table, omiting the table argument will create a new table with a timestamp as its name
 
-  -dataset DATASET      Query function to call on dataset
-  -table TABLE          name of table to send scorecard results
-  -scorecard SCORECARD  dataset to run query on
+  -dataset DATASET      name of dataset to create/send scorecard results
+  -table TABLE          name of table to create/send scorecard results
+  -datasource DATASOURCE
+                        dataset to run query on
 
 Export files:
   export csv files from the ./export directory.
 
-  -export EXPORT        Export files in ./export to dataset. Specify the dataset to send the data.
+  -bqimport BQIMPORT    Export files in ./export to dataset. Specify the dataset to send the data.
 
 Database Connection:
   Specify an enviroment:local, staging, production and a database to copy from
 
-  -copy ENV              Name of the enviroment you would like to copy from
-  -db DB                Name of the database you would like to copy
+  -copyfrom COPYFROM    Name of the enviroment you would like to copy from
+  -database DATABASE    Name of the database you would like to copy
 
 Example:
-python3 datagenerate.py -scorecard score_card_results -dataset inno_db_export
+python3 datagenerate.py -datasource inno_db_export -dataset score_card_results -table results
 
-This would query the inno_db_export dataset in your BigQuery project and create a table in the score_card_results dataset with the results.
+This would query the inno_db_export dataset in your BigQuery project and create a dataset named score_card_results and create a table names results in that dataset
