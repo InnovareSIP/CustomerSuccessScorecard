@@ -155,7 +155,7 @@ def cycle_in_progress(dataset, tbl=""):
 #returns number of actions with the status of 'in progress'
 def actions_in_progress(dataset, tbl=""):
     query=f""" 
-       SELECT organizations.name AS {tbl}organization, actions.status_id AS actions_in_progress    
+       SELECT organizations.name AS {tbl}organization, COUNT(actions.status_id) AS actions_in_progress    
             FROM {dataset}.actions 
             INNER JOIN
             {dataset}.cycles ON actions.cycle_id = cycles.id AND actions.status_id = 2
@@ -163,7 +163,7 @@ def actions_in_progress(dataset, tbl=""):
             {dataset}.goals ON cycles.goal_id = goals.id AND goals.status_id = 5
             FULL JOIN
             {dataset}.organizations ON goals.organization_id = organizations.id 
-            GROUP BY {tbl}organization, actions_in_progress  
+            GROUP BY {tbl}organization  
         """
     return query
 
@@ -238,30 +238,25 @@ def next_milestone_title(dataset, tbl=""):
             FROM {dataset}.milestones
             WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0
             GROUP BY oid)
-            SELECT organizations.name as {tbl}organization, milestones.title AS next_milestone_title
+            SELECT organizations.name as {tbl}organization, STRING_AGG(milestones.title,', ') AS next_milestone_title
             FROM {dataset}.milestones
             INNER JOIN 
             cte ON cte.due = milestones.due_on AND milestones.organization_id = cte.oid AND milestones.completed = 0
             INNER JOIN 
             {dataset}.organizations ON organizations.id = cte.oid
-            GROUP BY {tbl}organization, next_milestone_title
+            GROUP BY {tbl}organization
     """
     return query
 
 #returns the date of the next milestone closest to today's date
 def next_milestone_date(dataset, tbl=""):
     query=f"""
-        WITH cte AS (SELECT organization_id AS oid, MIN(milestones.due_on) AS due
+        SELECT organizations.name AS {tbl}organization, MIN(milestones.due_on) AS next_milestone_date
             FROM {dataset}.milestones
+             FULL JOIN 
+            {dataset}.organizations ON organizations.id = milestones.organization_id 
             WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0
-            GROUP BY oid)
-            SELECT organizations.name as {tbl}organization, milestones.due_on AS next_milestone_date
-            FROM {dataset}.milestones
-            INNER JOIN 
-            cte ON cte.due = milestones.due_on AND milestones.organization_id = cte.oid AND milestones.completed = 0
-            INNER JOIN 
-            {dataset}.organizations ON organizations.id = cte.oid
-            GROUP BY {tbl}organization, next_milestone_date
+            GROUP BY {tbl}organization
     """
     return query
 
