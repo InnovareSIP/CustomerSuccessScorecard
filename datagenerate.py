@@ -159,10 +159,10 @@ def main():
     group2 = parser.add_argument_group("Database Connection", "Specify an enviroment:local, staging, production and a database to copy from")
     group1.add_argument("-dataset", help="name of dataset to create/send scorecard results")
     group1.add_argument("-table", help="name of table to create/send scorecard results")
-    group1.add_argument("-datasource", help="dataset to run query on")
+    group1.add_argument("-datasource", help="dataset to run scorecard query on")
     group2.add_argument("-copyfrom", help="Name of the enviroment you would like to copy from")
     group2.add_argument("-database", help="Name of the database you would like to copy")
-    group3.add_argument("-bqimport", help="Export files in ./export to dataset. Specify the dataset to send the data.")
+    group3.add_argument("-bqimport", help="Export files in ./export to dataset. Specify the dataset in big query to send the data. ")
     # parser.add_argument("-q", help="Query function to call on dataset")
     args = parser.parse_args()
     #get todays date to add to final scorecard table
