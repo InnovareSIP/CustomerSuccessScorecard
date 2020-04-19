@@ -236,7 +236,7 @@ def next_milestone_title(dataset, tbl=""):
     query=f"""
         WITH cte AS (SELECT organization_id AS oid, MIN(milestones.due_on) AS due
             FROM {dataset}.milestones
-            WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0
+            WHERE milestones.completed = 0
             GROUP BY oid)
             SELECT organizations.name as {tbl}organization, STRING_AGG(milestones.title,', ') AS next_milestone_title
             FROM {dataset}.milestones
@@ -255,7 +255,7 @@ def next_milestone_date(dataset, tbl=""):
             FROM {dataset}.milestones
              FULL JOIN 
             {dataset}.organizations ON organizations.id = milestones.organization_id 
-            WHERE milestones.due_on >= CURRENT_DATE AND milestones.completed = 0
+            WHERE milestones.completed = 0
             GROUP BY {tbl}organization
     """
     return query
